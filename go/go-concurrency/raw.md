@@ -92,12 +92,12 @@
 - Synchronization helps ensure that the code is correct, but it comes at the expense of performance.
 - Therefore, if possible, try to design without synchronization of any type. In the case of communication, instead of shared memory, consider using message-passing IPC—in that case, you can avoid sharing memory between different tasks so each task has its own copy of the data to work with safely. You can do this with algorithmic improvements, good design models, proper data structures, or synchronization-independent classes.
 
+
 ### 10 - Nonblocking I/O
 
-
-
-
-
+- The server listens for incoming connections; when a client connects, the server communicates with it until the connection is closed (close the client to close the connection). It then continues to listen for new connections
+- In this implementation, the main thread contains a listening server socket that accepts incoming connections from clients. Each client connecting to the server is handled in a separate thread. The server creates another thread that communicates with the client.
+- Concurrency is achieved by using multiple threads. The OS overlaps multiple threads with preemptive scheduling.
 
 ## Book:
 
