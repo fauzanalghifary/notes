@@ -100,6 +100,22 @@
 - Concurrency is achieved by using multiple threads. The OS overlaps multiple threads with preemptive scheduling.
 - This approach is used in many technologies, such as the popular Apache web server MPM Prefork module, servlets in Jakarta EE (< version 3), the Spring Framework (< version 5), Ruby on Rails’ Phusion Passenger, Python Flask, and many others.
 - Although threads are relatively cheap to create and manage, the OS spends significant time, precious RAM space, and other resources managing them. For small tasks such as processing single requests, the overhead associated with thread management may outweigh the benefits of concurrent execution.
+- Responding to thousands of connection requests simultaneously using multiple threads or processes takes up a significant amount of system resources, reducing responsiveness.
+- With a high level of concurrency (say, 10,000 threads, if you can configure the OS to create that many threads), having many threads can affect throughput due to the frequent context-switching overhead. This is a scalability problem
+- Let’s understand why we need threads in the first place: we need them to handle blocking operations.
+- It is a synchronized task; you are “in sync” with the oven. You have to wait and be there until the moment the oven finishes with the pizza.
+- For web servers, I/O is the primary task, and it turns out the server doesn’t use the CPU while it’s waiting for a response from the client. This communication is very inefficient because it is blocking.
+- If a program is CPU-bound, context switching will become a performance nightmare
+- If a program has a lot of I/O-bound operations, context switching is an advantage. As soon as a task goes into a Blocked state, another task in a Ready state takes its place. This allows the processor to stay busy if work (tasks in the Ready state) needs to be done
+- So, if a function is blocked (for whatever reason), it can delay other tasks, and the overall progress of the entire system may suffer. If a function is blocked because it’s performing a CPU task, there’s not much we can do. But if it is blocked because of I/O, we know that the CPU is idle and can be used to perform another task that needs the CPU.
+- Recalling Chapter 6, it is possible to achieve concurrency without any parallelism. This can be handy when dealing with a large number of I/O-bound tasks. We can abandon thread-based concurrency to achieve more scalability,
+- The idea of nonblocking I/O is to request an I/O operation and not wait for a response so we can move on to other tasks.
+- Going back to the pizza cooking analogy, this time you don’t constantly monitor the pizza. Instead, you periodically go over to the oven and “ask” it whether the pizza is ready—turn on the light in the oven, and check whether the pizza is done.
+- It is a common misconception that nonblocking I/O results in faster I/O operations. Although nonblocking I/O does not block the task, it does not necessarily execute faster. Instead, it enables the application to perform other tasks while waiting for I/O operations to complete. This allows for better utilization of processing time and efficient handling of multiple connections, ultimately enhancing overall performance. Nonetheless, the speed of the I/O operation is primarily determined by hardware and network performance characteristics, and nonblocking I/O does not affect these factors.
+- Using nonblocking I/O in the right situation hides latency and improves our application’s throughput and/or responsiveness. It also allows us to work with a single thread, potentially saving us from synchronization problems between threads and the costs of thread management and associated system resources.
+- One simple approach to overcome the costly creation of threads or processes is to use the busy-waiting approach, where, with a single thread, we can concurrently process multiple client requests, using nonblocking operations.
+
+
 
 ## Book:
 
