@@ -136,3 +136,52 @@
     - sync.Once is a type that utilizes some sync primitives internally to ensure that only one call to Do ever calls the function passed in—even on different goroutines
   - Pool
     - It’s commonly used to constrain the creation of things that are expensive (e.g., database connections) so that only a fixed number of them are ever created, but an indeterminate number of operations can still request access to these things
+- Channels
+  - they are best used to communicate information between goroutines
+  - When using channels, you’ll pass a value into a chan variable, and then somewhere else in your program read it off the channel.
+  - Channels can also be declared to only support a unidirectional flow of data
+  - Sending is done by placing the <- operator to the right of a channel, and receiving is done by placing the <- operator to the left of the channel
+  - however, it is an error to try and write a value onto a read-only channel, and an error to read a value from a write-only channel.
+  - channels in Go are said to be blocking. This means that any goroutine that attempts to write to a channel that is full will wait until the channel has been emptied, and any goroutine that attempts to read from a channel that is empty will wait until at least one item is placed on it. 
+  - This can cause deadlocks if you don’t structure your program correctly. When the anonymous goroutine exits, Go correctly detects that all goroutines are asleep, and reports a deadlock
+  - The receiving form of the <- operator can also optionally return two values: the value read from the channel, and a boolean that indicates whether the channel is open or closed
+  - In programs, it’s very useful to be able to indicate that no more values will be sent over a channel
+  - Notice that we never placed anything on this channel; we closed it immediately. We were still able to perform a read operation, and in fact, we could continue performing reads on this channel indefinitely despite the channel remaining closed.
+  - Closing a channel is also one of the ways you can signal multiple goroutines simultaneously.
+  - We can also create buffered channels, which are channels that are given a capacity when they’re instantiated. This means that even if no reads are performed on the channel, a goroutine can still perform n writes, where n is the capacity of the buffered channel
+  - When we create a buffered channel with a capacity of four, it means that we can place four things onto the channel regardless of whether it’s being read from.
+  - an unbuffered channel is simply a buffered channel created with a capacity of 0
+  - writes to a channel block if a channel is full, and reads from a channel block if the channel is empty.
+  - An unbuffered channel has a capacity of zero and so it’s already full before any writes.
+  - An unbuffered channel has a capacity of zero and so it’s already full before any writes.
+  - Like unbuffered channels, buffered channels are still blocking; the preconditions that the channel be empty or full are just different. In this way, buffered channels are an in-memory FIFO queue for concurrent processes to communicate over.
+  - It also bears mentioning that if a buffered channel is empty and has a receiver, the buffer will be bypassed and the value will be passed directly from the sender to the receiver.
+  - Buffered channels can be useful in certain situations, but you should create them with care. As we’ll see in the next chapter, buffered channels can easily become a premature optimization and also hide deadlocks by making them more unlikely to happen.
+  - This is an example of an optimization that can be useful under the right conditions: if a goroutine making writes to a channel has knowledge of how many writes it will make, it can be useful to create a buffered channel whose capacity is the number of writes to be made, and then make those writes as quickly as possible
+  - If we examine this table (Table 3-2), we see a few areas that could lead to trouble. We have three operations that can cause a goroutine to block, and three operations that can cause your program to panic!
+  - The first thing we should do to put channels in the right context is to assign channel ownership. I’ll define ownership as being a goroutine that instantiates, writes, and closes a channel
+  - channel owners have a write-access view into the channel (chan or chan<-), and channel utilizers only have a read-only view into the channel (<-chan).
+  - Now let’s look at those blocking operations that can occur when reading. As a consumer of a channel, I only have to worry about two things: Knowing when a channel is closed and responsibly handling blocking for any reason.
+  - The important thing is that as a consumer you should handle the fact that reads can and will block
+  - Channels were one of the things that drew me to Go in the first place. Combined with the simplicity of goroutines and closures, it was apparent to me how easy it would be to write clean, correct, concurrent code. In many ways, channels are the glue that binds goroutines together.
+- The select Statement
+  - The select statement is the glue that binds channels together; it’s how we’re able to compose channels together in a program to form larger abstractions
+  - select statements are one of the most crucial things in a Go program with concurrency
+  - select statements can help safely bring channels together with concepts like cancellations, timeouts, waiting, and default values.
+  - Unlike switch blocks, case statements in a select block aren’t tested sequentially, and execution won’t automatically fall through if none of the criteria are met.
+  - Instead, all channel reads and writes are considered simultaneously to see if any of them are ready: populated or closed channels in the case of reads, and channels that are not at capacity in the case of writes. If none of the channels are ready, the entire select statement blocks. Then when one the channels is ready, that operation will proceed, and its corresponding statements will execute
+  - What happens when multiple channels have something to read? What if there are never any channels that become ready? What if we want to do something but no channels are currently ready?
+  - The Go runtime will perform a pseudo-random uniform selection over the set of case statements. This just means that of your set of case statements, each has an equal chance of being selected as all the others.
+  - By weighting the chance of each channel being utilized equally, all Go programs that utilize the select statement will perform well in the average case.
+  - What about the second question: what happens if there are never any channels that become ready? If there’s nothing useful you can do when all the channels are blocked, but you also can’t block forever, you may want to time out.
+  - This leaves us the remaining question: what happens when no channel is ready, and we need to do something in the meantime? Like case statements, the select statement also allows for a default clause in case you’d like to do something if all the channels you’re selecting against are blocking.
+  - You can see that it ran the default statement almost instantaneously. This allows you to exit a select block without blocking. Usually you’ll see a default clause used in conjunction with a for-select loop. This allows a goroutine to make progress on work while waiting for another goroutine to report a result.
+- The GOMAXPROCS Lever
+  - people often think this function relates to the number of logical processors on the host machine—and in a roundabout way it does—but really this function controls the number of OS threads that will host so-called “work queues.”
+  - So why would you want to tweak this value? Most of the time you won’t want to. Go’s scheduling algorithm is good enough in most situations that increasing or decreasing the number of worker queues and threads will likely do more harm than good, but there are still some situations where changing this value might be useful.
+- Conclusion
+  - All that remains to understand when writing concurrent Go code is how to combine these primitives in structured ways that scale and are easy to understand
+
+## 04 - Concurrency Patterns in Go
+
+- 
