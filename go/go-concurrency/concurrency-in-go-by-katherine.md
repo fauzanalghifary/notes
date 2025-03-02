@@ -1,0 +1,138 @@
+# Book: Concurrency in GO by Katherine Cox-Buday
+
+## Preface
+
+- we will have discussed the entire stack of Go concurrency concerns: common concurrency pitfalls, motivation behind the design of Go’s concurrency, the basic syntax of Go’s concurrency primitives, common concurrency patterns, patterns of patterns, and various tooling that will help you along the way.
+
+## 01 - An Introduction to Concurrency
+
+- When most people use the word “concurrent,” they’re usually referring to a process that occurs simultaneously with one or more processes. It is also usually implied that all of these processes are making progress at about the same time.
+- Why Is Concurrency Hard?
+  - Race Conditions
+    - A race condition occurs when two or more operations must execute in the correct order, but the program has not been written so that this order is guaranteed to be maintained.
+    - Most of the time, this shows up in what’s called a data race, where one concurrent operation attempts to read a variable while at some undetermined time another concurrent operation is attempting to write to the same variable.
+    - Most of the time, data races are introduced because the developers are thinking about the problem sequentially.
+    - When writing concurrent code, you have to meticulously iterate through the possible scenarios.
+  - Atomicity
+    - When something is considered atomic, or to have the property of atomicity, this means that within the context that it is operating, it is indivisible, or uninterruptible.
+    - When thinking about atomicity, very often the first thing you need to do is to define the context, or scope, the operation will be considered to be atomic in. Everything follows from this.
+    - Making the operation atomic is dependent on which context you’d like it to be atomic within
+  - Memory Access Synchronization
+    - In fact, there’s a name for a section of your program that needs exclusive access to a shared resource. This is called a critical section.
+    - one way to solve this problem is to synchronize access to the memory between your critical sections. 
+    - It is true that you can solve some problems by synchronizing access to the memory, but as we just saw, it doesn’t automatically solve data races or logical correctness.
+    - the calls to Lock you see can make our program slow. Every time we perform one of these operations, our program pauses for a period of time.
+  - Deadlocks, Livelocks, and Starvation
+    - A deadlocked program is one in which all concurrent processes are waiting on one another. In this state, the program will never recover without outside intervention.
+    - It turns out there are a few conditions that must be present for deadlocks to arise (Coffman Conditions)
+      - Mutual Exclusion: concurrent process holds exclusive rights to a resource at any one time.
+      - Wait For Condition: concurrent process must simultaneously hold a resource and be waiting for an additional resource.
+      - No Preemption: resource held by a concurrent process can only be released by that process, so it fulfills this condition.
+      - Circular Wait: concurrent process (P1) must be waiting on a chain of other concurrent processes (P2), which are in turn waiting on it (P1), so it fulfills this final condition too.
+    - If we ensure that at least one of these conditions is not true, we can prevent deadlocks from occurring.
+    - Unfortunately, in practice these conditions can be hard to reason about, and therefore difficult to prevent
+    - Livelocks are programs that are actively performing concurrent operations, but these operations do nothing to move the state of the program forward.
+    - This example demonstrates a very common reason livelocks are written: two or more concurrent processes attempting to prevent a deadlock without coordination.
+    - livelocks are more difficult to spot than deadlocks simply because it can appear as if the program is doing work
+    - Livelocks are a subset of a larger set of problems called starvation.
+    - Starvation is any situation where a concurrent process cannot get all the resources it needs to perform work.
+    - Livelocks warrant discussion separate from starvation because in a livelock, all the concurrent processes are starved equally, and no work is accomplished. More broadly, starvation usually implies that there are one or more greedy concurrent process that are unfairly preventing one or more concurrent processes from accomplishing work as efficiently as possible, or maybe at all.
+    - One of the ways you can detect and solve starvation is by logging when work is accomplished, and then determining if your rate of work is as high as you expect it.
+    - If you utilize memory access synchronization, you’ll have to find a balance between preferring coarse-grained synchronization for performance, and fine-grained synchronization for fairness
+    - When it comes time to performance tune your application, to start with, I highly recommend you constrain memory access synchronization only to critical sections; if the synchronization becomes a performance problem, you can always broaden the scope. It’s much harder to go the other way.
+- How do you expose the concurrency to callers? What techniques do you use to create a solution that is both easy to use and modify? What is the right level of concurrency for this problem? Although there are ways to think about these problems in structured ways, it remains an art.
+- Concurrency is certainly a difficult area in computer science, but I want to leave you with hope: these problems aren’t intractable, and with Go’s concurrency primitives, you can more safely and clearly express your concurrent algorithms
+- the excellent work that has been done on Go’s garbage collector has dramatically reduced the audience that needs to concern themselves with the minutia of how Go’s garbage collection works
+- Go has made it much easier to use concurrency in your program by not forcing you to manage memory, let alone across concurrent processes.
+- Go’s runtime also automatically handles multiplexing concurrent operations onto operating system threads.
+- all you need to know is that it allows you to directly map concurrent problems into concurrent constructs instead of dealing with the minutia of starting and managing threads, and mapping logic evenly across available threads.
+- For example, say you write a web server, and you’d like every connection accepted to be handled concurrently with every other connection. In some languages, before your web server begins accepting connections, you’d likely have to create a collection of threads, commonly called a thread pool, and then map incoming connections onto threads. Then, within each thread you’ve created, you’d need to loop over all the connections on that thread to ensure they were all receiving some CPU time. In addition, you’d have to write your connection-handling logic to be pausable so that it shares fairly with the other connections.
+- Whew! In contrast, in Go you would write a function and then prepend its invocation with the go keyword. The runtime handles everything else we discussed automatically!
+
+## 02 - Modeling Your Code: Communicating Sequential Processes
+
+- The Difference Between Concurrency and Parallelism
+  - The difference between concurrency and parallelism turns out to be a very powerful abstraction when modeling your code, and Go takes full advantage of this
+  - Concurrency is a property of the code; parallelism is a property of the running program.
+  - The first is that we do not write parallel code, only concurrent code that we hope will be run in parallel. Once again, parallelism is a property of the runtime of our program, not the code.
+  - The second interesting thing is that we see it is possible—maybe even desirable—to be ignorant of whether our concurrent code is actually running in parallel
+  - The third and final interesting thing is that parallelism is a function of time, or context. For example, if our context was a space of five seconds, and we ran two operations that each took a second to run, we would consider the operations to have run in parallel. If our context was one second, we would consider the operations to have run sequentially.
+  - What’s happening is that as we begin moving down the stack of abstraction, the problem of modeling things concurrently is becoming both more difficult to reason about, and more important
+  - In other words, the more difficult it is to get concurrency right, the more important it is to have access to concurrency primitives that are easy to compose. Unfortunately, most concurrent logic in our industry is written at one of the highest levels of abstraction: OS threads.
+  - Before Go was first revealed to the public, this was where the chain of abstraction ended for most of the popular programming languages. If you wanted to write concurrent code, you would model your program in terms of threads and synchronize the access to the memory between them. 
+  - Threads are still there, of course, but we find that we rarely have to think about our problem space in terms of OS threads. Instead, we model things in goroutines and channels, and occasionally shared memory
+- CSP
+  - the shared memory model can be difficult to utilize correctly—especially in large or complicated programs. It’s for this reason that concurrency is considered one of Go’s strengths: it has been built from the start with principles from CSP in mind and therefore it is easy to read, write, and reason about.
+- How This Helps You
+  - What does Go do so differently that has set it apart from other popular languages when it comes to concurrency?
+  - Goroutines free us from having to think about our problem space in terms of parallelism and instead allow us to model problems closer to their natural level of concurrency. 
+  - In Go, we can almost directly represent the natural state of this problem in code: we would create a goroutine for each incoming connection, field the request there (potentially communicating with other goroutines for data/services), and then return from the goroutine’s function
+  - This is achieved by a promise Go makes to us: that goroutines are lightweight, and we normally won’t have to worry about creating one
+  - In the case of Go, the language was designed around concurrency.
+  - This decoupling of concurrency and parallelism has another benefit: because Go’s runtime is managing the scheduling of goroutines for you, it can introspect on things like goroutines blocked waiting for I/O and intelligently reallocate OS threads to goroutines that are not blocked. This also increases the performance of your code.
+  - we’ll naturally be writing concurrent code at a finer level of granularity than we perhaps would in other languages
+- Go’s Philosophy on Concurrency
+  - CSP was and is a large part of what Go was designed around; however, Go also supports more traditional means of writing concurrent code through memory access synchronization and the primitives that follow that technique. Structs and methods in the sync and other packages allow you to perform locks, create pools of resources, preempt goroutines, and more.
+  - Package sync provides basic synchronization primitives such as mutual exclusion locks. Other than the Once and WaitGroup types, most are intended for use by low-level library routines. Higher-level synchronization is better done via channels and communication.
+  - "Regarding mutexes, the sync package implements them, but we hope Go programming style will encourage people to try higher-level techniques. In particular, consider structuring your program so that only one goroutine at a time is ever responsible for a particular piece of data."
+  - "Do not communicate by sharing memory. Instead, share memory by communicating."
+  - One of Go’s mottos is “Share memory by communicating, don’t communicate by sharing memory.” 
+  - That said, Go does provide traditional locking mechanisms in the sync package. Most locking issues can be solved using either channels or traditional locks. So which should you use? Use whichever is most expressive and/or most simple.
+  - the way we can mostly differentiate comes from where we’re trying to manage our concurrency: internally to a tight scope, or externally throughout our system
+  - Are you trying to transfer ownership of data? USE CHANNELS. If you have a bit of code that produces a result and wants to share that result with another bit of code, what you’re really doing is transferring ownership of that data.
+  - Are you trying to guard internal state of a struct? USE MUTEX. By using memory access synchronization primitives, you can hide the implementation detail of locking your critical section from your callers.
+  - Are you trying to coordinate multiple pieces of logic? USE CHANNELS. Having locks scattered throughout your object-graph sounds like a nightmare, but having channels everywhere is expected and encouraged! I can compose channels, but I can’t easily compose locks or methods that return values.
+  - You will find it much easier to control the emergent complexity that arises in your software if you use channels because of Go’s select statement, and their ability to serve as queues and be safely passed around
+  - If you find yourself struggling to understand how your concurrent code works, why a deadlock or race is occurring, and you’re using primitives, this is probably a good indicator that you should switch to channels.
+  - Is it a performance-critical section? USE MUTEX. If you have a section of your program that you have profiled, and it turns out to be a major bottleneck that is orders of magnitude slower than the rest of the program, using memory access synchronization primitives may help this critical section perform under load. This is because channels use memory access synchronization to operate, therefore they can only be slower. however, a performance-critical section might be hinting that we need to restructure our program.
+  - Go’s philosophy on concurrency can be summed up like this: aim for simplicity, use channels when possible, and treat goroutines like a free resource.
+
+## 03 - Go’s Concurrency Building Blocks
+
+- Goroutines
+  - Every Go program has at least one goroutine: the main goroutine, which is automatically created and started when the process begins.
+  - a goroutine is a function that is running concurrently (remember: not necessarily in parallel!) alongside other code. You can start one simply by placing the go keyword before a function.
+  - They’re not OS threads, and they’re not exactly green threads—threads that are managed by a language’s runtime—they’re a higher level of abstraction known as coroutines. Coroutines are simply concurrent subroutines (functions, closures, or methods in Go) that are nonpreemptive—that is, they cannot be interrupted. Instead, coroutines have multiple points throughout which allow for suspension or reentry.
+  - What makes goroutines unique to Go are their deep integration with Go’s runtime. 
+  - Go’s runtime observes the runtime behavior of goroutines and automatically suspends them when they block and then resumes them when they become unblocked
+  - goroutines can be considered a special class of coroutine.
+  - Go follows a model of concurrency called the fork-join model.
+  - The go statement is how Go performs a fork, and the forked threads of execution are goroutines
+  - In order to a create a join point, you have to synchronize the main goroutine and the sayHello goroutine. This can be done in a number of ways, but I’ll use one we’ll talk about in “The sync Package”: sync.WaitGroup.
+  - Closures close around the lexical scope they are created in, thereby capturing variables
+  - Interesting! It turns out that goroutines execute within the same address space they were created in
+  - Because goroutines operate within the same address space as each other, and simply host functions, utilizing goroutines is a natural extension to writing nonconcurrent code. Go’s compiler nicely takes care of pinning variables in memory so that goroutines don’t accidentally access freed memory, which allows developers to focus on their problem space instead of memory management;
+  - Since multiple goroutines can operate against the same address space, we still have to worry about synchronization
+  - It is practical to create hundreds of thousands of goroutines in the same address space. If goroutines were just threads, system resources would run out at a much smaller number.
+  - the garbage collector does nothing to collect goroutines that have been abandoned somehow.
+  - Those numbers are quite large! On my laptop I have 8 GB of RAM, which means that in theory I can spin up millions of goroutines without requiring swapping.
+  - Creating goroutines is very cheap, and so you should only be discussing their cost if you’ve proven they are the root cause of a performance issue.
+- The sync Package
+  - The sync package contains the concurrency primitives that are most useful for low-level memory access synchronization.
+  - WaitGroup
+    - WaitGroup is a great way to wait for a set of concurrent operations to complete when you either don’t care about the result of the concurrent operation, or you have other means of collecting their results
+    - You can think of a WaitGroup like a concurrent-safe counter: calls to Add increment the counter by the integer passed in, and calls to Done decrement the counter by one. Calls to Wait block until the counter is zero.
+    - Notice that the calls to Add are done outside the goroutines they’re helping to track. If we didn’t do this, we would have introduced a race condition
+    - Had the calls to Add been placed inside the goroutines’ closures, the call to Wait could have returned without blocking at all because the calls to Add would not have taken place.
+  - Mutex and RWMutex
+    - Mutex stands for “mutual exclusion” and is a way to guard critical sections of your program
+    - a critical section is an area of your program that requires exclusive access to a shared resource. A Mutex provides a concurrent-safe way to express exclusive access to these shared resources
+    - whereas channels share memory by communicating, a Mutex shares memory by creating a convention developers must follow to synchronize access to the memory. You are responsible for coordinating access to this memory by guarding access to it with a mutex
+    - whereas channels share memory by communicating, a Mutex shares memory by creating a convention developers must follow to synchronize access to the memory. You are responsible for coordinating access to this memory by guarding access to it with a mutex
+    - You’ll notice that we always call Unlock within a defer statement. This is a very common idiom when utilizing a Mutex to ensure the call always happens, even when panicing. Failing to do so will probably cause your program to deadlock.
+    - Critical sections are so named because they reflect a bottleneck in your program. It is somewhat expensive to enter and exit a critical section, and so generally people attempt to minimize the time spent in critical sections.
+    - One strategy for doing so is to reduce the cross-section of the critical section. There may be memory that needs to be shared between multiple concurrent processes, but perhaps not all of these processes will read and write to this memory. If this is the case, you can take advantage of a different type of mutex: sync.RWMutex.
+    - RWMutex gives you a little bit more control over the memory. You can request a lock for reading, in which case you will be granted access unless the lock is being held for writing. This means that an arbitrary number of readers can hold a reader lock so long as nothing else is holding a writer lock.
+    - It’s usually advisable to use RWMutex instead of Mutex when it logically makes sense.
+  - Cond
+    - a rendezvous point for goroutines waiting for or announcing the occurrence of an event.
+    - an “event” is any arbitrary signal between two or more goroutines that carries no information other than the fact that it has occurred.
+    - It would be better if there were some kind of way for a goroutine to efficiently sleep until it was signaled to wake and check its condition. This is exactly what the Cond type does for us.
+    - Note that the call to Wait doesn’t just block, it suspends the current goroutine, allowing other goroutines to run on the OS thread.
+    - A few other things happen when you call Wait: upon entering Wait, Unlock is called on the Cond variable’s Locker, and upon exiting Wait, Lock is called on the Cond variable’s Locker
+    - We also have a new method in this example, Signal. This is one of two methods that the Cond type provides for notifying goroutines blocked on a Wait call that the condition has been triggered.
+    - the Cond type is much more performant than utilizing channels.
+  - Once
+    - sync.Once is a type that utilizes some sync primitives internally to ensure that only one call to Do ever calls the function passed in—even on different goroutines
+  - Pool
+    - It’s commonly used to constrain the creation of things that are expensive (e.g., database connections) so that only a fixed number of them are ever created, but an indeterminate number of operations can still request access to these things
