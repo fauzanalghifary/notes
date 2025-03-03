@@ -184,4 +184,79 @@
 
 ## 04 - Concurrency Patterns in Go
 
-- 
+- Confinement
+  - When working with concurrent code, there are a few different options for safe operation. We’ve gone over two of them: Synchronization primitives for sharing memory (e.g., sync.Mutex) and Synchronization via communicating (e.g., channels)
+  - However, there are a couple of other options that are implicitly safe within multiple concurrent processes: Immutable data and Data protected by confinement
+  - Confinement is the simple yet powerful idea of ensuring information is only ever available from one concurrent process. When this is achieved, a concurrent program is implicitly safe and no synchronization is needed. There are two kinds of confinement possible: ad hoc and lexical.
+  - Ad hoc confinement is when you achieve confinement through a convention—whether it be set by the languages community, the group you work within, or the codebase you work within (difficult to achieve)
+  lexical confinement: it wields the compiler to enforce the confinement.
+  - Because of the lexical scope, we’ve made it impossible1 to do the wrong thing, and so we don’t need to synchronize memory access or share data through communication.
+  - So what’s the point? Why pursue confinement if we have synchronization available to us? The answer is improved performance and reduced cognitive load on developers. Synchronization comes with a cost, and if you can avoid it you won’t have any critical sections, and therefore you won’t have to pay the cost of synchronizing them. You also sidestep an entire class of issues possible with synchronization;
+  - Concurrent code that utilizes lexical confinement also has the benefit of usually being simpler to understand than concurrent code without lexically confined variables. This is because within the context of your lexical scope you can write synchronous code.
+  - Having said that, it can be difficult to establish confinement, and so sometimes we have to fall back to our wonderful Go concurrency primitives.
+- The for-select Loop
+  - Sending iteration variables out on a channel
+  - Looping infinitely waiting to be stopped
+- Preventing Goroutine Leaks
+  - goroutines are not garbage collected by the runtime, so regardless of how small their memory footprint is, we don’t want to leave them lying about our process. So how do we go about ensuring they’re cleaned up?
+  - The goroutine has a few paths to termination: When it has completed its work, When it cannot continue its work due to an unrecoverable error, and When it’s told to stop working.
+  - whether or not a child goroutine should continue executing might be predicated on knowledge of the state of many other goroutines. The parent goroutine (often the main goroutine) with this full contextual knowledge should be able to tell its child goroutines to terminate
+  - The way to successfully mitigate this is to establish a signal between the parent goroutine and its children that allows the parent to signal cancellation to its children. By convention, this signal is usually a read-only channel named done. The parent goroutine passes this channel to the child goroutine and then closes the channel when it wants to cancel the child goroutine
+  - If a goroutine is responsible for creating a goroutine, it is also responsible for ensuring it can stop the goroutine.
+- The or-channel
+  - combine one or more done channels into a single done channel that closes if any of its component channels close.
+- Error Handling
+  - as we develop our programs, we should give our error paths the same attention we give our algorithms.
+  - The most fundamental question when thinking about error handling is, “Who should be responsible for handling the error?” At some point, the program needs to stop ferrying the error up the stack and actually do something with it. What is responsible for this?
+  - I suggest you separate your concerns: in general, your concurrent processes should send their errors to another part of your program that has complete information about the state of your program, and can make a more informed decision about what to do.
+  - coupled the potential result with the potential error.
+  - This represents the complete set of possible outcomes created from the goroutine checkStatus, and allows our main goroutine to make decisions about what to do when errors occur
+  - we’ve successfully separated the concerns of error handling from our producer goroutine. This is desirable because the goroutine that spawned the producer goroutine—in this case our main goroutine—has more context about the running program, and can make more intelligent decisions about what to do with errors.
+  - the main takeaway here is that errors should be considered first-class citizens when constructing values to return from goroutines. If your goroutine can produce errors, those errors should be tightly coupled with your result type, and passed along through the same lines of communication—just like regular synchronous functions.
+- Pipelines
+  - When you write a program, you probably don’t sit down and write one long function—at least I hope you don’t! You construct abstractions in the form of functions, structs, methods, etc. Why do we do this? Partly to abstract away details that don’t matter to the greater flow, and partly so that we can work on one area of code without affecting other areas
+  - A pipeline is nothing more than a series of things that take data in, perform an operation on it, and pass the data back out. We call each of these operations a stage of the pipeline.
+  - what are the properties of a pipeline stage? A stage consumes and returns the same type. A stage must be reified2 by the language so that it may be passed around. Functions in Go are reified and fit this purpose nicely.
+  - batch processing. This just means that they operate on chunks of data all at once instead of one discrete value at a time
+  - stream processing. This means that the stage receives and emits one element at a time.
+  - Channels are uniquely suited to constructing pipelines in Go because they fulfill all of our basic requirements. They can receive and emit values, they can safely be used concurrently, they can be ranged over, and they are reified by the language
+  - So in a nutshell, the generator function converts a discrete set of values into a stream of data on a channel. Aptly, this type of function is called a generator. You’ll see this frequently when working with pipelines because at the beginning of the pipeline, you’ll always have some batch of data that you need to convert to a channel
+  - Regardless of what state the pipeline stage is in—waiting on the incoming channel, or waiting on the send—closing the done channel will force the pipeline stage to terminate.
+  - a generator for a pipeline is any function that converts a set of discrete values into a stream of values on a channel
+  - Empty interfaces are a bit taboo in Go, but for pipeline stages it is my opinion that it’s OK to deal in channels of interface{} so that you can use a standard library of pipeline patterns
+- Fan-Out, Fan-In
+  - Fan-out is a term to describe the process of starting multiple goroutines to handle input from the pipeline, and fan-in is a term to describe the process of combining multiple results into one channel.
+  - You might consider fanning out one of your stages if both of the following apply: It doesn’t rely on values that the stage had calculated before and It takes a long time to run.
+  - how do we know which one to fan out? Remember our criteria from earlier: order-independence and duration
+  - In a nutshell, fanning in involves creating the multiplexed channel consumers will read from, and then spinning up one goroutine for each incoming channel, and one goroutine to close the multiplexed channel when the incoming channels have all been closed
+  - A naive implementation of the fan-in, fan-out algorithm only works if the order in which results arrive is unimportant. We have done nothing to guarantee that the order in which items are read from the randIntStream is preserved as it makes its way through the sieve.
+- The or-done-channel
+- The tee-channel
+  - Sometimes you may want to split values coming in from a channel so that you can send them off into two separate areas of your codebase.
+- The bridge-channel
+  - In some circumstances, you may find yourself wanting to consume values from a sequence of channels
+  - Thanks to bridge, we can use the channel of channels from within a single range statement and focus on our loop’s logic
+- Queuing
+  - Sometimes it’s useful to begin accepting work for your pipeline even though the pipeline is not yet ready for more. This process is called queuing.
+  - All this means is that once your stage has completed some work, it stores it in a temporary location in memory so that other stages can retrieve it later, and your stage doesn’t need to hold a reference to it
+  - While introducing queuing into your system is very useful, it’s usually one of the last techniques you want to employ when optimizing your program. Adding queuing prematurely can hide synchronization issues such as deadlocks and livelocks, and further, as your program converges toward correctness, you may find that you need more or less queuing.
+  - one of the common mistakes people make when trying to tune the performance of a system: introducing queues to try and address performance concerns. Queuing will almost never speed up the total runtime of your program; it will only allow the program to behave differently.
+  - So the answer to our question of the utility of introducing a queue isn’t that the runtime of one of stages has been reduced, but rather that the time it’s in a blocking state is reduced. This allows the stage to continue doing its job. In this example, users would likely experience lag in their requests, but they wouldn’t be denied service altogether.
+  - In this way, the true utility of queues is to decouple stages so that the runtime of one stage has no impact on the runtime of another.
+  - situations in which queuing can increase the overall performance of your system. The only applicable situations are: If batching requests in a stage saves time and If delays in a stage produce a feedback loop into the system.
+  - As anticipated, the buffered write is faster than the unbuffered write. This is because in bufio.Writer, the writes are queued internally into a buffer until a sufficient chunk has been accumulated, and then the chunk is written out. This process is often called chunking, for obvious reasons.
+  - Chunking is faster because bytes.Buffer must grow its allocated memory to accommodate the bytes it must store. For various reasons, growing memory is expensive; therefore, the less times we have to grow, the more efficient our system as a whole will perform. Thus, queuing has increased the performance of our system as a whole.
+  - Usually anytime performing an operation requires an overhead, chunking may increase system performance. Some examples of this are opening database transactions, calculating message checksums, and allocating contiguous space.
+  - Aside from chunking, queuing can also help if your algorithm can be optimized by supporting lookbehinds, or ordering.
+  - If the efficiency of the pipeline drops below a certain critical threshold, the systems upstream from the pipeline begin increasing their inputs into the pipeline, which causes the pipeline to lose more efficiency, and the death-spiral begins. Without some sort of fail-safe, the system utilizing the pipeline will never recover.
+  - By introducing a queue at the entrance to the pipeline, you can break the feedback loop at the cost of creating lag for requests. From the perspective of the caller into the pipeline, the request appears to be processing, but taking a very long time. As long as the caller doesn’t time out, your pipeline will remain stable. If the caller does time out, you need to be sure you support some kind of check for readiness when dequeuing. If you don’t, you can inadvertently create a feedback loop by processing dead requests thereby decreasing the efficiency of your pipeline.
+  - So from our examples we can begin to see a pattern emerge; queuing should be implemented either: At the entrance to your pipeline, or In stages where batching will lead to higher efficiency.
+  - In a pipeline, a stable system is one in which the rate that work enters the pipeline, or ingress, is equal to the rate in which it exits the system, or egress. If the rate of ingress exceeds the rate of egress, your system is unstable and has entered a death-spiral. If the rate of ingress is less than the rate of egress, you still have an unstable system, but all that’s happening is that your resources aren’t being utilized completely. Not the worst situation in the world, but maybe you care about this if the underutilization is found on a vast scale (e.g., clusters or data centers).
+  - Through Little’s Law, we have proven that queuing will not help decrease the amount of time spent in a system.
+  - your pipeline will only be as fast as your slowest stage.
+  - Remember that as you increase the queue size, it takes your work longer to make it through the system! You’re effectively trading system utilization for lag.
+  - Something that Little’s Law can’t provide insight on is handling failure. Keep in mind that if for some reason your pipeline panics, you’ll lose all the requests in your queue. This might be something to guard against if re-creating the requests is difficult or won’t happen. To mitigate this, you can either stick to a queue size of zero, or you can move to a persistent queue, which is simply a queue that is persisted somewhere that can be later read from should the need arise.
+  - Queuing can be useful in your system, but because of its complexity, it’s usually one of the last optimizations I would suggest implementing.
+- The context Package
+  - 
+
