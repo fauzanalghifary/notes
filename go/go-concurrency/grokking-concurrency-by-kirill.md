@@ -1,6 +1,7 @@
 # Book: Grokking Concurrency by Kirill Bobrov
 
-(https://learning.oreilly.com/library/view/grokking-concurrency/9781633439771)
+- https://learning.oreilly.com/library/view/grokking-concurrency/9781633439771
+- https://github.com/fauzanalghifary/grokking_concurrency
 
 ## 01 - Introducing Concurrency
 - A concurrent system is a system that can deal with many things at once.

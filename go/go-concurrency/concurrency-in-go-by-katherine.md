@@ -1,5 +1,8 @@
 # Book: Concurrency in GO by Katherine Cox-Buday
 
+- https://learning.oreilly.com/library/view/concurrency-in-go/9781491941294/
+- https://github.com/fauzanalghifary/concurrency-in-go-src
+
 ## Preface
 
 - we will have discussed the entire stack of Go concurrency concerns: common concurrency pitfalls, motivation behind the design of Go’s concurrency, the basic syntax of Go’s concurrency primitives, common concurrency patterns, patterns of patterns, and various tooling that will help you along the way.
