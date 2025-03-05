@@ -258,5 +258,93 @@
   - Something that Little’s Law can’t provide insight on is handling failure. Keep in mind that if for some reason your pipeline panics, you’ll lose all the requests in your queue. This might be something to guard against if re-creating the requests is difficult or won’t happen. To mitigate this, you can either stick to a queue size of zero, or you can move to a persistent queue, which is simply a queue that is persisted somewhere that can be later read from should the need arise.
   - Queuing can be useful in your system, but because of its complexity, it’s usually one of the last optimizations I would suggest implementing.
 - The context Package
-  - 
+  - It would be useful if we could communicate extra information alongside the simple notification to cancel: why the cancellation was occuring, or whether or not our function has a deadline by which it needs to complete.
+  - It turns out that the need to wrap a done channel with this information is very common in systems of any size, and so the Go authors decided to create a standard pattern for doing so
+  - the context package serves two primary purposes: To provide an API for canceling branches of your call-graph, and To provide a data-bag for transporting request-scoped data through your call-graph.
+  - Since both the Context’s key and value are defined as interface{}, we lose Go’s type-safety when attempting to retrieve values. The key could be a different type, or slightly different than the key we provide. The value could be a different type than we’re expecting. For these reasons, the Go authors recommend you follow a few rules when storing and retrieving value from a Context.
+  - First, they recommend you define a custom key-type in your package
+  - The context package is pretty neat, but it hasn’t been uniformly lauded. Within the Go community, the context package has been somewhat controversial. The cancellation aspect of the package has been pretty well received, but the ability to store arbitrary data in a Context, and the type-unsafe manner in which the data is stored, have caused some divisiveness
+  - However, the larger issue is definitely the nature of what developers should store in instances of Context.
+  - you shouldn’t be using a Context to fulfill your secret desire for Go to support optional parameters)
+  - Here are my heuristics: The data should transit process or API boundaries, The data should be immutable, The data should trend toward simple types, The data should be data, not types with methods, AND The data should help decorate operations, not drive them.
+  - If your algorithm behaves differently based on what is or isn’t included in its Context, you have likely crossed over into the territory of optional parameters.
+  - These aren’t hard-and-fast rules; they’re heuristics.
+  - The final advice I’d leave you with is that the cancellation functionality provided by Context is very useful, and your feelings about the data-bag shouldn’t deter you from using it.
 
+## 05 - Concurrency at Scale
+
+- Error Propagation
+  - Many developers make the mistake of thinking of error propagation as secondary, or “other,” to the flow of their system. Careful consideration is given to how data flows through the system, but errors are something that are tolerated and ferried up the stack without much thought, and ultimately dumped in front of the user.
+  - Errors indicate that your system has entered a state in which it cannot fulfill an operation that a user either explicitly or implicitly requested. Because of this, it needs to relay a few pieces of critical information: What happened, When and where it occurred, A friendly user-facing message, and How the user can get more information
+  - Errors should always contain a complete stack trace starting with how the call was initiated and ending with where the error was instantiated
+  - the error should contain information regarding the context it’s running within.
+  - the error should contain the time on the machine the error was instantiated on, in UTC.
+  - The message that gets displayed to the user should be customized to suit your system and its users. A friendly message is human-centric, gives some indication of whether the issue is transitory, and should be about one line of text.
+  - Errors that are presented to users should provide an ID that can be cross-referenced to a corresponding log that displays the full information of the error: time the error occurred (not the time the error was logged), the stack trace—everything you stuffed into the error when it was created.
+  - By default, no error will contain all of this information without your intervention. Therefore, you could take the stance that any error that is propagated to the user without this information is a mistake, and therefore a bug.
+  -  It’s possible to place all errors into one of two categories: Bugs and Known edge cases (e.g., broken network connections, failed disk writes, etc.
+  - Error correctness becomes an emergent property of our system. We also concede perfection from the start by explicitly handling malformed errors, and by doing so we have given ourselves a framework to take mistakes and correct them over time.
+  - As we established, all errors should be logged with as much information as is available. But when displaying errors to users, this is where the distinction between bugs and known edge cases comes in.
+  - When our user-facing code receives a well-formed error, we can be confident that at all levels in our code, care was taken to craft the error message, and we can simply log it and print it out for the user to see. The confidence that we get from seeing an error with the correct type cannot be understated.
+  - you can canvas your top-level error handling and delineate between bugs and well-crafted errors, and then progressively ensure that all the errors you create are considered well-crafted.
+- Timeouts and Cancellation
+  - When working with concurrent code, timeouts and cancellations are going to turn up frequently
+  - Why support timeouts: System saturation, Stale data, and Attempting to prevent deadlocks
+  - when to time out: If the request is unlikely to be repeated when it is timed out, If you don’t have the resources to store the requests (e.g., memory for in-memory queues, disk space for persisted queues), and If the need for the request, or the data it’s sending, will go stale
+  - The timeout period’s purpose is only to prevent deadlock, and so it only needs to be short enough that a deadlocked system will unblock in a reasonable amount of time for your use case.
+  - Therefore, it is preferable to chance a livelock and fix that as time permits, than for a deadlock to occur and have a system recoverable only by restart.
+  - Note that this isn’t a recommendation for how to build a system correctly; rather a suggestion for building a system that is tolerant to timing errors you may not have exercised during development and testing. I do recommend you keep the timeouts in place, but the goal should be to converge on a system without deadlocks where the timeouts are never triggered.
+  - why a concurrent process might be canceled: Timeouts, User intervention, Parent cancellation, Replicated requests
+  - An easy way to do this is to break up the pieces of your goroutine into smaller pieces. You should aim for all nonpreemptable atomic operations to complete in less time than the period you’ve deemed acceptable.
+  - Here’s another problem lurking here as well: if our goroutine happens to modify shared state—e.g., a database, a file, an in-memory data structure—what happens when the goroutine is canceled?
+  - Another issue you need to be concerned with is duplicated messages.
+  - There are a few ways to avoid sending duplicate messages. The easiest (and the method I recommend) is to make it vanishingly unlikely that a parent goroutine will send a cancellation signal after a child goroutine has already reported a result. 
+  - When designing your concurrent processes, be sure to take into account timeouts and cancellation. Like many other topics in software engineering, neglecting timeouts and cancellation from the beginning and then attempting to put them in later is a bit like trying to add eggs to a cake after it has been baked.
+- Heartbeats
+  - Heartbeats are a way for concurrent processes to signal life to outside parties.
+  - There are two different types of heartbeats we’ll discuss in this section: Heartbeats that occur on a time interval and Heartbeats that occur at the beginning of a unit of work.
+  - Heartbeats that occur on a time interval are useful for concurrent code that might be waiting for something else to happen for it to process a unit of work. Because you don’t know when that work might come in, your goroutine might be sitting around for a while waiting for something to happen. A heartbeat is a way to signal to its listeners that everything is well, and that the silence is expected.
+  - Now in a properly functioning system, heartbeats aren’t that interesting. We might use them to gather statistics regarding idle time, but the utility for interval-based heartbeats really shines when your goroutine isn’t behaving as expected.
+  - By using a heartbeat, we have successfully avoided a deadlock, and we remain deterministic by not having to rely on a longer timeout.
+  - This test is bad because it’s nondeterministic
+- Replicated Requests
+  - You should only replicate out requests like this to handlers that have different runtime conditions: different processes, machines, paths to a data store, or access to different data stores altogether.
+  - Although this is can be expensive to set up and maintain, if speed is your goal, this is a valuable technique. In addition, this naturally provides fault tolerance and scalability.
+- Rate Limiting
+  - The most obvious answer is that by rate limiting a system, you prevent entire classes of attack vectors against your system
+  - The point is: if you don’t rate limit requests to your system, you cannot easily secure it.
+  - A user’s mental model is usually that their access to the system is sandboxed and can neither affect nor be affected by other users’ activities. If you break that mental model, your system can feel like it’s not well engineered, and even cause users to become angry or leave.
+  - Rate limits allow you to reason about the performance and stability of your system by preventing it from falling outside the boundaries you’ve already investigated. If you need to expand those boundaries, you can do so in a controlled manner after lots of testing and coffee.
+  - Hopefully I’ve given enough justification to convince you that rate limits are good even if you set limits that you think will never be reached. They’re pretty simple to create, and they solve so many problems that it’s hard to rationalize not using them.
+  - Most rate limiting is done by utilizing an algorithm called the token bucket.
+  - In the token bucket algorithm, we define r to be the rate at which tokens are added back to the bucket. It can be one a nanosecond, or one a minute. This becomes what we commonly think of as the rate limit: because we have to wait until new tokens become available, we limit our operations to that refresh rate.
+  - So we now have two settings we can fiddle with: how many tokens are available for immediate use—d, the depth of the bucket—and the rate at which they are replenished—r. Between these two we can control both the burstiness and overall rate limit. Burstiness simply means how many requests can be made when the bucket is full.
+  - We will probably want to establish multiple tiers of limits: fine-grained controls to limit requests per second, and coarse-grained controls to limit requests per minute, hour, or day.
+- Healing Unhealthy Goroutines
+  - In long-lived processes such as daemons, it’s very common to have a set of long-lived goroutines. These goroutines are usually blocked, waiting on data to come to them through some means, so that they can wake up, do their work, and then pass the data on
+  - The point is that it can be very easy for a goroutine to become stuck in a bad state from which it cannot recover without external help.
+  - In a long-running process, it can be useful to create a mechanism that ensures your goroutines remain healthy and restarts them if they become unhealthy. We’ll refer to this process of restarting goroutines as “healing.”
+
+## 06 - Goroutines and the Go Runtime
+
+- Work Stealing
+  - In Go, goroutines are tasks.
+  - Everything after a goroutine is called is the continuation.
+  - Go’s work-stealing algorithm enqueues and steals continuations.
+  - All things considered, stealing continuations are considered to be theoretically superior to stealing tasks, and therefore it is best to queue the continuation and not the goroutine
+  - As we mentioned, the GOMAXPROCS setting controls how many contexts are available for use by the runtime. The default setting is for there to be one context per logical CPU on the host machine. Unlike contexts, there may be more or less OS threads than cores to help Go’s runtime manage things like garbage collection and goroutines. I bring this up because there is one very important guarantee in the runtime: there will always be at least enough OS threads available to handle hosting every context. This allows the runtime to make an important optimization. The runtime also contains a thread pool for threads that aren’t currently being utilized
+  - Scaling, efficiency, and simplicity. This is what makes goroutines so intriguing.
+
+## Appendix
+
+$ go test -race mypkg    # test the package
+$ go run -race mysrc.go  # compile and run the program
+$ go build -race mycmd   # build the command
+$ go install -race mypkg # install the package
+
+runtime/pprof
+goroutine    - stack traces of all current goroutines
+heap         - a sampling of all heap allocations
+threadcreate - stack traces that led to the creation of new OS threads
+block        - stack traces that led to blocking on synchronization primitives
+mutex        - stack traces of holders of contended mutexes
