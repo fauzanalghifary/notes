@@ -125,4 +125,68 @@
 
 ## 04 - Synchronization with mutexes
 
+- mutexes
+  - We can protect critical sections of our code with mutexes so that only one goroutine at a time accesses a shared resource. In this way, we eliminate race conditions
+  - ensure that only one thread of execution runs critical sections
+  - Think of them as being physical locks that block certain parts of our code from more than one goroutine at any time. If only one goroutine is accessing a critical section at a time, we are safe from race conditions. After all, race conditions happen only when there is a conflict between two or more goroutines.
+  - If another goroutine tries to lock a mutex that is already locked, the goroutine will be suspended until the mutex is released. If more than one goroutine is suspended, waiting for a lock to become available, only one goroutine is resumed, and it is the next to acquire the mutex lock.
+  - When we create a new mutex, its initial state is always unlocked.
+  - We should protect all critical sections, including parts where the goroutine is only reading the shared resources. The compiler’s optimizations might re-order instructions, causing them to execute in a different manner. Using proper synchronization mechanisms, such as mutexes, ensures that we’re reading the latest copy of the shared resources.
+  - Using mutexes has the effect of limiting concurrency. The code in between locking and unlocking a mutex is executed by one goroutine at any time, effectively turning that part of the code into sequential execution. As we saw in chapter 1, and according to Amdahl’s law, the sequential-to-parallel ratio will limit the performance scalability of our code, so it’s essential that we reduce the time spent holding the mutex lock.
+  - When deciding how and when to use mutexes, it’s best to focus on which resources we should protect and discover where critical sections start and end. Then we need to think about how to minimize the number of Lock() and Unlock() calls.
+  - We are basically maximizing the scalablity of our program by using the locks only on the code sections that run very quickly in proportion to the rest
+  - he lesson here is to minimize the amount of time spent holding the mutex lock, while also trying to lower the number of mutex calls. This makes sense if you think back to Amdahl’s law, which tells us that if our code spends more time on the parallel parts, we can finish faster and scale better.
+  - A goroutine will block when it calls the Lock() operation if the mutex is already in use by another execution. This is what’s known as a blocking function: the execution of the goroutine stops until Unlock() is called by another goroutine. In some applications, we might not want to block the goroutine, but instead perform some other work before attempting again to lock the mutex and access the critical section.
+  - Note that while correct uses of TryLock do exist, they are rare, and use of TryLock is often a sign of a deeper problem in a particular use of mutexes
+- readers–writer mutexes
+  - We can think of mutexes as blunt tools that solve concurrency problems by blocking concurrency. Only one goroutine at a time can execute our mutex-protected critical section. This is great for guaranteeing that we don’t suffer from race conditions, but this might needlessly restrict performance and scalability for some applications
+  - Using readers–writer mutexes, we can improve the performance of read-heavy applications where we are doing a large number of read operations on shared data in comparison with updates.
+  - In the main() function, we then start a match-recorder goroutine and 5,000 client handler goroutines. Basically, we are simulating a game that is ongoing and that has a large number of users making simultaneous requests to get game updates. 
+  - In comparison to the number of read queries, the data changes very slowly. When we use normal mutex locks, every time a goroutine reads the shared basketball data, it blocks all the other serving goroutines until it’s finished. Even though the client handlers are just reading the shared slice without any modifications, we are still giving each one of them exclusive access to the slice. Note that if multiple goroutines are just reading shared data without updating it, there is no need for this exclusive access; concurrent reading of shared data does not cause any interference.
+  - Race conditions only happen if we change the shared state without proper synchronization. If we don’t modify the shared data, there is no risk of race conditions.
+  - We would only block access to the shared data if there was a need to update it
+  - Thus, we would benefit from a system that allows multiple concurrent reads but exclusive writes.
+  - This is what the readers–writer lock gives us. When we just need to read a shared resource without updating it, the readers–writer lock allows multiple concurrent goroutines to execute the read-only critical section part. When we need to update the shared resource, the goroutine executing the write critical section requests the write lock to acquire exclusive access.
+  - obtaining a write lock blocks all other access, both read and write, just like a normal mutex.
+  - When the write lock is acquired, it will block any other goroutine from accessing the critical section in our clientHandler() function until we release the write lock by calling UnLock().
+  - If we have a system running multiple cores, this example should give us a speedup over a system with a single core. That’s because we would be running a number of client handler goroutines in parallel since they can access the shared data at the same time. In a test run, I achieved a threefold increase in throughput performance using the readers–writer mutex:
+  - This implementation of the readers–writer lock is read-preferring. This means that if we have a consistent number of readers’ goroutines hogging the read part of the mutex, a writer goroutine would be unable to acquire the mutex. In technical terms, we say that the reader goroutines are starving the writer ones, not allowing them access to the shared resource. In the next chapter, we will improve this when we discuss condition variables.
 
+## 05 - Condition variables and semaphores
+
+- Mutexes are not the only synchronization tool that we have available: condition variables give us extra controls that complement exclusive locking. They give us the ability to wait for a certain condition to occur before unblocking the execution.
+- Semaphores go one step further than mutexes in that they allow us to control how many concurrent goroutines can execute a certain section at the same time. In addition, semaphores can be used to store a signal (of an occurring event) for later access by an execution.
+- Conditional variables
+  - We can use them in situations where a goroutine needs to block and wait for a particular condition to occur
+  - Condition variables work together with mutexes and give us the ability to suspend the current execution until we have a signal that a particular condition has changed**
+  - The key to understanding condition variables is to grasp that the Wait() function releases the mutex and suspends the execution in an atomic manner. This means that another execution cannot come in between these two operations, acquire the lock, and call the Signal() function before the execution calling Wait() has been suspended.
+  - Every time we add money to our shared money variable, we send a signal by calling the Signal() function on the condition variable.
+  - Whenever a waiting goroutine receives a signal or broadcast, it will try to reacquire the mutex. If another execution is holding on to the mutex, the goroutine will remain suspended until the mutex becomes available.
+  - A monitor is a synchronization pattern that has a mutex with an associated condition variable.
+  - In Go, we use the monitor pattern every time we use a mutex with a condition variable.
+  - We need to ensure that when we call the signal or broadcast function, there is another goroutine waiting for it; otherwise, the signal or broadcast is not received by any goroutine, and it’s missed.
+  - To ensure that we don’t miss any signals and broadcasts, we need to use them in conjunction with mutexes. That is, we should call these functions only when we’re holding the associated mutex. In this way, we know for sure that the main() goroutine is in a waiting state because the mutex is only released when the goroutine calls Wait().
+  - We can modify the doWork() function from listing 5.6 so that it locks the mutex before calling signal(), as shown on the right side of figure 5.5. This ensures that the main() goroutine is in a waiting state, as shown in the next listing.
+  - TIP Always use Signal(), Broadcast(), and Wait() when holding the mutex lock to avoid synchronization problems.
+  - When we have multiple goroutines suspended on a condition variable’s Wait(), Signal() will arbitrarily wake up one of these goroutines. The Broadcast() call, on the other hand, will wake up all goroutines that are suspended on a Wait().
+  - When a group of goroutines is suspended on Wait() and we call Signal(), we only wake up one of the goroutines. We have no control over which goroutine the system will resume, and we should assume that it can be any goroutine blocked on the condition variable’s Wait(). Using Broadcast(), we ensure that all suspended goroutines on the condition variable are resumed.
+  - When all the other goroutines unblock from the Wait(), as a result of the Broadcast(), they exit the condition-checking loop and release the mutex.
+  - In technical-speak, we call this scenario write-starvation—we can’t update our shared data structures because the reader parts of the execution are continuously accessing them, blocking access to the writer
+  - Starvation is a situation where an execution is blocked from gaining access to a shared resource because the resource is made unavailable for a long time (or indefinitely) by other greedy executions.
+  - We need a different design for a readers–writer lock that is not read-preferred—one that doesn’t starve our writer goroutines
+  - To achieve this, instead of having the goroutines block on a mutex, we could have them suspended using a condition variable. With a condition variable, we can have different conditions on when to block readers and writers
+  - The RWMutex bundled with Go is write-preferring: If a goroutine holds a RWMutex for reading and another goroutine might call Lock, no goroutine should expect to be able to acquire a read lock until the initial read lock is released. In particular, this prohibits recursive read locking. This is to ensure that the lock eventually becomes available; a blocked Lock call excludes new readers from acquiring the lock.
+  - The writers’ waiting counter ensures that any newcomer reader will know there are waiting writers. The reader will then give priority to the writer by blocking until the writers’ waiting counter is back to 0. This is what makes our readers–writer mutex write-preferring.
+- Counting semaphores
+  - we saw how mutexes allow only one goroutine to have access to a shared resource, while a readers–writer mutex allows us to specify multiple concurrent reads but exclusive writes.
+  - Semaphores give us a different type of concurrency control, in that we can specify the number of concurrent executions that are permitted
+  - Mutexes give us a way to allow only one execution to happen at a time. What if we need to allow a variable number of executions to happen concurrently?
+  - Once the limit is reached, we can either make the goroutines wait or return an error message to the client saying the system is at capacity.
+  - This is where semaphores come in handy. They allow a fixed number of permits that enable concurrent executions to access shared resources.
+  - Once all the permits are used, further requests for access will have to wait until a permit is freed again 
+  - A mutex ensures that only a single goroutine has exclusive access, whereas a semaphore ensures that at most N goroutines have access. In fact, a mutex gives the same functionality as a semaphore where N has a value of 1. A counting semaphore allows us the flexibility to choose any value of N.
+  - Although a mutex is a special case of a semaphore with one permit, there is a slight difference in how they are expected to be used. When using mutexes, the execution that is holding a mutex should also be the one to release it. When using semaphores, this is not always the case.
+  - Looking at semaphores from another perspective, they provide similar functionality to the wait and signal of a condition variable, with the added benefit of recording a signal even if no goroutine is waiting.
+  - In listing 5.6, we saw an example of using condition variables to wait for a goroutine to finish its task. The problem we had was that we could end up calling the Signal() function before the main() goroutine had called Wait(), resulting in a missed signal. We can solve this problem by using a semaphore initialized with 0 permits.
+
+## 06 - Synchronizing with waitgroups and barriers
