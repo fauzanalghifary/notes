@@ -190,3 +190,296 @@
   - In listing 5.6, we saw an example of using condition variables to wait for a goroutine to finish its task. The problem we had was that we could end up calling the Signal() function before the main() goroutine had called Wait(), resulting in a missed signal. We can solve this problem by using a semaphore initialized with 0 permits.
 
 ## 06 - Synchronizing with waitgroups and barriers
+
+- Waitgroups and barriers are two synchronization abstractions that work on groups of executions (such as goroutines). We typically use waitgroups to wait for a group of tasks to complete. We use barriers to synchronize many executions at a common point.
+- Waitgroups in Go
+  - With waitgroups, we can have a goroutine wait for a set of concurrent tasks to complete. We can think of a waitgroup as a project manager managing a set of tasks given to different workers. Once the tasks are all complete, the project manager notifies us.
+  - In this pattern, we typically have multiple goroutines that need to complete a few tasks concurrently. We can create a waitgroup and set its size to be equal to the number of assigned tasks. The main goroutine will hand over the tasks to the newly created goroutines, and its execution will be suspended after it calls the Wait() operation. Once a goroutine finishes its task, it calls the Done() operation on the waitgroup (see the left side of figure 6.1). When all the goroutines have called the Done() operation for all their assigned tasks, the main goroutine will unblock. At this point, the main goroutine knows that all the tasks have been completed
+  - We can create a simple version of a waitgroup just by building on top of the semaphore type that we developed in the previous chapter.
+  - In the waitgroup in Go’s sync package, we can increase the size of the group at any point—even when we have goroutines waiting on the work to be completed.
+  - The idea here is to have a goroutine find files that match the input string. If this goroutine encounters a directory, it adds 1 to a global waitgroup and spawns a new goroutine that runs the same exact logic for that directory. The search ends after every goroutine calls Done() on the waitgroup. This means that we have explored every single subdirectory of our first input directory
+- Barriers
+  - Waitgroups are great for synchronizing after a task has been completed. But what if we need to coordinate our goroutines before we start a task? We might also need to align different executions at different points in time. Barriers give us the ability to synchronize groups of goroutines at specific points in our code.
+  - Let’s look at a simple analogy to help us compare waitgroups and barriers. A private plane will only leave when all the passengers arrive at the departure terminal. This represents a barrier. Everyone has to wait until every passenger arrives at this barrier (the airport terminal). When everyone has finally arrived, the passengers can proceed and board the plane. For the same flight, the pilot must wait for a number of tasks to be complete before departing, such as refueling, stowing luggage, and loading passengers. In our analogy, this represents the waitgroup. The pilot is waiting for these concurrent tasks to be complete before the plane can depart.
+  - To understand program barriers, think about a set of goroutines, all working together on different parts of the same computation. Before the goroutines start, they all need to wait for their input data. Once they have completed, they again need to wait for another execution to collect and merge the results of their computations. The cycle might repeat multiple times, as long as there is more input data that needs to be computed
+  - When thinking about barriers, we can visualize our goroutines as being in one of two possible states: either executing their task or suspended and waiting for others to catch up
+  - Barriers are different from waitgroups in that they combine the waitgroup’s Done() and Wait() operations together into one atomic call. The other difference is that depending on the implementation, barriers can be reused multiple times.
+  - Unfortunately, Go does not come with a bundled implementation of a barrier, so if we want to use one, we need to implement it ourselves. As with waitgroups, we can use a condition variable to implement our barrier.
+  - Matrix multiplication is a fundamental operation from linear algebra that is used in various computer science fields. Many algorithms in graph theory, artificial intelligence, and computer graphics adopt matrix multiplication in their algorithms. Unfortunately, computing this linear algebra operation is a time-consuming process.
+  - Barriers are useful concurrency tools that let us synchronize executions at certain points in our code, as we saw in the matrix multiplication application. This pattern of loading work, waiting for it to complete, and collecting the results is a typical application for barriers. However, it is mostly useful when creating new executions is a fairly expensive operation, such as when we use kernel-level threads. Using this pattern, you save the time taken to create new threads on every load cycle.
+  - In Go, creating goroutines is cheap and fast, so using a barrier for this pattern does not bring huge performance improvements. It is usually easier to just load work, create your worker goroutines, wait for their completion using a waitgroup, and then collect the results. Nonetheless, barriers might still have performance benefits in scenarios when you need to synchronize large numbers of goroutines.
+
+## 07 - Communication using message passing
+
+- Passing messages
+  - In Go, we can open a channel between two or more goroutines and then program the goroutines to send and receive messages among themselves
+  - When we have distributed applications running on multiple machines, message passing is the main way they can communicate. Since the applications are running on separate machines and are not sharing any memory, they share information by sending messages via common protocols, such as HTTP.
+  - The advantage of using message passing is that we greatly reduce the risk of causing race conditions with our bad programming. Since we’re not modifying the contents of any shared memory, goroutines cannot step over each other in memory. Using message passing, each goroutine just works with its own isolated memory.
+  - A Go channel lets two or more goroutines exchange messages. Conceptually, we can think of a channel as being a direct line between our goroutines, as shown in figure 7.2. The goroutines can use the ends of the channel to send or receive messages.
+  - To send messages, we use the <- operator.
+  - To consume a message from a channel, we use the same <- operator. However, we put the channel to the right of the operator instead of to the left. 
+  - Notice how on the output, we’re missing the final STOP message from the receiver. This is because the main() goroutine sends the stop message and then terminates. Once the main goroutine terminates, the entire process exits, and we never get to see the stop message printed on the console.
+  - What would happen if a goroutine were to push a message on a channel without there being another goroutine to read that message? Go’s channels are synchronous by default, meaning that the sender goroutine will block until there is a receiver goroutine ready to consume the message
+  - Since our receiver () goroutine terminates after 5 seconds, no other goroutine is available to consume messages from the channel. Go’s runtime realizes this and raises the fatal error. Without this error, our program would stay blocked until we manually terminate it. 
+  - The same situation occurs if we have a receiver waiting for a message and no sender is available. The receiver’s goroutine will be suspended until a message is available
+  - The key idea here is that by default, Go’s channels are synchronous. A sender will block if there isn’t a goroutine consuming its message, and a receiver will similarly block if there isn’t a goroutine sending a message.
+  - Although channels are synchronous, we can configure them so that they store a number of messages before they block (see figure 7.5). When we use a buffered channel, the sender goroutine will not block as long as there is space available in the buffer.
+  - When we create a channel, we can specify its buffer capacity. Then, whenever a sender goroutine writes a message without any receiver consuming the message, the channel will store the message (shown in figure 7.6). This means that as long as there is space in the buffer, our sender does not block, and we don’t have to wait for a receiver to read the message.
+  - The channel will keep on storing messages as long as capacity remains in the buffer. Once the buffer is filled up, the sender will block again
+  - Once a receiver goroutine is available to consume the messages, the messages are fed to the receiver in the same order they were sent. This happens even if the sender goroutine is no longer sending any new messages (shown in figure 7.8). As long as there are messages in the buffer, a receiver goroutine will not block.
+  - Once the receiver goroutine consumes all the messages and the buffer is empty, the receiver goroutine will again block. When the buffer is empty, a receiver will block if we don’t have a sender or if the sender is producing messages at a slower rate than the receiver can read them
+  - Go’s channels are bidirectional by default. This means that a goroutine can act as both a receiver and a sender of messages. However, we can assign a direction to a channel so that the goroutine using the channel can only send or receive messages.
+  - In the receiver, when we declare the channel as being messages <-chan int, we are saying that the channel is a receive-only channel. The declaration of messages chan<- int in the sender function is saying the opposite—that the channel can only be used to send messages.
+  - In software development, a sentinel value is a predefined value that signals to an execution, a process, or an algorithm that it should terminate. In the context of multithreading and a distributed system, this is sometimes referred to as a poison pill message.
+  - Instead of using this sentinel value message, Go allows us to close a channel. We can do this in code by calling the close(channel) function. Once we close a channel, we shouldn’t send any more messages to it because doing so raises errors. If we try to receive messages from a closed channel, we will get messages containing the default value for the channel’s data type
+  - Using the default value is not ideal because the default value might be a valid value for our use case.
+  - Luckily, Go gives us a couple of ways to handle closed channels. Whenever we consume from a channel, an additional flag is returned, telling us the status of the channel. This flag is set to false only when the channel has been closed
+  - As we shall see in the next chapter, this syntax is useful in certain situations, such as when it’s combined with the select statement. However, we can use a cleaner syntax to stop a receiver from reading on a closed channel. If we want to read all the messages until we close the channel, we can use the following for loop syntax:
+  - We can execute functions concurrently in the background and then collect their results via channels once they finish. Typically, in normal sequential programming, we call a function and expect it to return a result. In concurrent programming, we can call functions in separate goroutines and later pick up their return values from an output channel.
+- Implementing channels
+  - In its basic form, a buffered channel is similar to a fixed-size queue data structure. The difference is that it can safely be used from multiple concurrent goroutines. In addition, the channel needs to block the receiver goroutine if the buffer is empty or to block the sender if the buffer is full
+  - We need a number of elements to build the functionality of our channel:
+    - A shared queue data structure that acts like a buffer to store the messages between sender and receiver
+    - Concurrent access protection for the shared data structure so that multiple senders and receivers do not interfere with each other 
+    - Access control that blocks the execution of a receiver when the buffer is empty
+    - Access control that blocks the execution of a sender when the buffer is full
+  - To protect our shared data structure from concurrent access, we can use a simple mutex. When we add or remove a message from the queue, we need to ensure that the concurrent modifications to the queue do not interfere.
+  - To control access so that executions are blocked when the queue is full or empty, we can use semaphores. In this case, semaphores are a good base primitive since they allow concurrent access to a specific number of concurrent executions. From the receiver’s side, we can think of using a semaphore as having as many free permits as there are messages in the shared queue. Once the queue is empty, the semaphore will block the next request to consume a message since the number of free permits on the semaphore will be 0. We can use the same trick on the sender’s side—we can use another semaphore that goes down to 0 when the queue gets full. Once this happens, the semaphore will block the next send request.
+  - A zero-capacity channel blocking the receiver until the sender pushes a message
+  - The implementation also has a buffer to store any pending messages. When this buffer is full or the channel is synchronous, any new sender goroutine is suspended and queued in the senders’ list. Conversely, when the buffer is empty, any new receiver goroutine is suspended and queued in the receivers’ list.
+  - Unlike our implementation, this system ensures fairness amongst the suspended goroutines; the first goroutine that gets suspended will also be the first that gets resumed.
+
+## 08 - Selecting channels
+
+- In this chapter, we will see how to use Go’s select statement to read and write messages on multiple channels and to implement timeouts and non-blocking channels. We will also examine a technique for excluding channels that have been closed and consuming only from the remaining open channels. Finally, we’ll discuss memory sharing versus message passing and when we should choose one technique over the other.
+- Combining multiple channels
+  - ..... Reading from multiple channels
+  - How can we have one goroutine respond to messages coming from different goroutines over multiple channels? Go’s select statement lets us specify multiple channel operations as separate cases and then execute a case depending on which channel is ready.
+  - The select statement lets us group read operations on multiple channels together, blocking the goroutine until a message arrives on any one of the channels
+  - Once a message arrives on any of the channels, the goroutine is unblocked, and a code handler for that channel is run
+  - We can then decide what else to do—either continue with our execution, or go back and wait for the next message by using the select statement again.
+  - As we shall see later in this chapter, using a pattern where the function returns an output-only channel enables us to reuse these functions as building blocks for more complex behaviors. We can do this because Go channels are first-class objects.
+  - Channels are first-class objects, which means that we can store them as variables, pass or return them from functions, or even send them on a channel.
+  - When using select, if multiple cases are ready, a case is chosen at random. Your code should not rely on the order in which the cases are specified.
+  - ..... Using select for non-blocking channel operations
+  - Another use case for select is when we need to use channels in a non-blocking manner
+  - For example, can we try to read a message from a channel? Then, if no messages are available, instead of blocking, can we have the current execution work on a default set of instructions
+  - The select statement gives us the default case for exactly this scenario. The instructions under the default case will be executed if none of the other cases is available. This lets us try to access one or more channels, but if none is ready, we can do something else.
+  - ..... Performing concurrent computations on the default case
+  - A useful scenario is to use the default select case for concurrent computations and then use a channel to signal when we need to stop.
+  - we can use a channel to notify all other goroutines when one execution discovers the password, as shown in figure 8.4. Once a goroutine finds the matching password, it closes a common channel. This has the effect of interrupting all participating goroutines and stopping the processing.
+  - NOTE We can use the close() operation on a channel to act like a signal being broadcast to all consumers.
+  - Creates a common channel used in the goroutines that signals when a password has been found
+  - ..... Timing out on channels
+  - Another useful scenario is blocking for only a specified amount of time, waiting for an operation on a channel
+  - Just like in the previous two examples, we want to check to see whether a message has arrived on a channel, but we want to wait for a few seconds to see if a message arrives, instead of unblocking immediately and doing something else. This is useful in many situations when channel operations are time sensitive.
+  - We can implement this behavior by using a separate goroutine that sends a message on an extra channel after a specified timeout. We can then use this extra channel in our select statement, together with the other channels. This will give us the effect of blocking on the select statement until any of the channels becomes available or the timeout occurs
+  - ..... Writing to channels with select
+  - We can also use the select statement when we need to write messages to channels, not just when we are reading messages from channels. Select statements can combine read or write blocking channel operations together, selecting the case that unblocks first.
+  - How can we feed in a stream of random numbers while reading the primes returned on another channel in one goroutine? The answer is to use a select statement to both feed in the random numbers and read the primes
+  - ..... Disabling select cases with nil channels
+  - In Go, we can assign nil values to channels. This has the effect of blocking the channel from sending or receiving anything
+  - Go has deadlock detection, so when Go notices that the program is stuck with no hope of recovering, it will raise a fatal error.
+  - Using select with just one nil channel is not that useful, but we can use the pattern of assigning nil to a channel to disable a case in a select statement.
+  - WARNING When we use a select case on a closed channel, that case will always execute.
+  - Another solution would be to change the channel into a nil channel whenever it is closed. Reading from a channel always returns two values: the message and a flag telling us if the channel is still open. We can read the flag, and if the flag indicates that the channel has been closed, we can set the channel reference to nil
+  - Assigning a nil value to the channel variable after the receiver detects that the channel has been closed has the effect of disabling that case statement. This allows the receiving goroutine to read from the remaining open channels.
+- Choosing between message passing and memory sharing
+  - ..... Balancing code simplicity
+  - Producing simple, readable, and easy-to-maintain software code is ever more important with today’s complex business requirements and large development teams. Concurrent programming using message passing tends to produce code containing well-defined modules, each module running its own concurrent execution that passes messages to other executions. This makes code simpler and easier to understand. In addition, having clear input and output channels to the concurrent executions means that our program data flow is easier to grasp and, if needed, modify.
+  - In contrast, memory sharing means that we need to use a more primitive way of managing concurrency. Just like reading a low-level language, code that uses concurrency primitives (such as mutexes and semaphores) tends to be harder to follow. The code is usually more verbose and is littered with protected critical sections. Unlike message passing, it’s harder to determine how data flows through the application
+  - ..... Designing tightly versus loosely coupled systems
+  - The terms tightly and loosely coupled software refer to how dependent different modules are on each other. Tightly coupled software means that when we change one component, it will have a ripple effect on many other parts of the software, which usually require changes as well. In loosely coupled software, components tend to have clear boundaries and few dependencies on other modules. In loosely coupled software, introducing a change in one component requires few or no changes in others
+  - Loosely coupling is usually a software design goal and a desirable code property. It means that our software is easier to test and more maintainable, requiring less work whenever we introduce a new feature.
+  - Concurrent programming using memory sharing typically produces more tightly coupled software. The inter-thread communication uses a common block of memory, and the boundaries of each execution are not clearly defined. Any execution can read and write to the same location
+  - Writing loosely coupled software while using memory sharing is more difficult than when using message passing because changing the way we update the shared memory from one execution will have a significant effect on the rest of the application.
+  - In contrast, with message passing, executions can have clearly defined input and output contracts, which means we know exactly how a change in one execution will affect another. For example, we can easily change the inside logic of a goroutine if the input and output contracts through our channels are maintained. This allows us to build loosely coupled systems more easily, and refactoring the logic in one module does not have a large ripple effect on the rest of the application.
+  - NOTE This is not to say that all code that uses message passing is loosely coupled. Nor is all software that uses memory sharing tightly coupled. It is just easier to come up with a loosely coupled design using message passing because we can define simple boundaries for each concurrent execution with clear input and output channels.
+  - .....  Optimizing memory consumption
+  - With message passing, each goroutine has its own isolated state stored in memory. When we pass messages from one goroutine to another, each organizes the data in its memory to compute its task. Often, there is some replication of the same data across multiple goroutines.
+  - In converting our program to use message passing, we have avoided using mutexes to control access to shared memory since each goroutine is now only working on its own data. However, in doing so, we have increased the memory use since we have allocated a slice for each web page
+  - For applications that pass structures containing larger amounts of data, we might be better off using memory sharing to reduce memory consumption.
+  - ..... Communicating efficiently
+  - Message passing will degrade the performance of our application if we are spending too much time passing messages around. Since we pass copies of messages from one goroutine to another, we suffer the performance penalty of spending time copying the data in the message. This extra performance cost is noticeable if the messages are large or numerous.
+  - If the amount of data shared is large and we have performance constraints, we might be better off using memory sharing.
+  - The other scenario is when our executions are very chatty—when concurrent executions need to send many messages to each other.
+  - Using message passing for such a scenario would mean that we would be sending a huge number of messages on every iteration. Every goroutine would have to send its partial results to all other goroutines and then receive the other grid results from every goroutine. In this scenario, our application would end up spending a lot of time and memory to copy and pass the values around. In such scenarios, we are likely better off using memory sharing. For example, we could allocate a shared two-dimensional array space and let the goroutines read each other’s grid results, using the appropriate synchronization tools, such as readers–writer locks.
+
+## 09 - Programming with channels
+
+- Working with channels requires a different way of programming than when using memory sharing. The idea is to have a set of goroutines, each with its own internal state, exchanging information with other goroutines by passing messages on Go’s channels. In this way, each goroutine’s state is isolated from direct interference by other executions, reducing the risk of race conditions.
+- Go’s own mantra is not to communicate by shared memory but to instead share memory by communicating. Since memory sharing is more prone to race conditions and requires complex synchronization techniques, we should avoid it when possible and instead use message passing.
+- Communicating sequential processes
+  - Programming with a low-level model of concurrency means that as programmers, we need to work harder to manage the complexity and reduce bugs in our software. We don’t know when a thread of execution will be scheduled by the operating system, and this creates a non-deterministic environment—instructions are interleaved without us knowing beforehand the order of execution. This non-determinism, combined with memory sharing, creates the potential for race conditions. To avoid these, we must keep track of which execution is accessing the memory at the same time as other executions, and we need to restrict this access using synchronization primitives such as mutexes or semaphores.
+  - Software containing race conditions is difficult to debug because race conditions are tricky to reproduce and test
+  - ..... Avoiding interference with immutability
+  - One way to greatly reduce the risk of race conditions is to not allow our programming to modify the same memory from multiple concurrent executions. We can restrict this by making use of immutable concepts when we are sharing memory.
+  - DEFINITION Immutable literally means unchangeable. In computer programming, we use immutability when we initialize structures without providing any way to modify them. When the programming requires changes to these structures, we create a new copy of the structure containing the required changes, leaving the old copy as it is.
+  - If our threads of execution only share memory containing data that is never updated, we can rest assured that there are no data race conditions. After all, most race conditions happen because multiple executions write to the same memory locations at the same time. If an execution needs to modify shared data, such as a variable, it can instead create a separate, local copy with the updates needed.
+  - Creating a copy when we need to update shared data leaves us with a problem: How do we share the new, updated data that is now in a separate location in memory? We need a model for managing and sharing this new, modified data. This is where message passing and CSP come in handy.
+  - ..... Concurrent programming with CSP
+  - Instead of using memory sharing, it is based on message passing via channels.
+  - In CSP, processes communicate with each other by exchanging copies of values. Communication is done through named unbuffered channels.
+  - The key difference when using the CSP model is that executions are not sharing memory. Instead, they pass copies of data to each other. Like when using immutability, if each execution is not modifying shared data, there is no risk of interference, and thus we avoid most race conditions. If each execution has its own isolated state, we can eliminate data race conditions without needing to use complex synchronization logic involving mutexes, semaphores, or condition variables.
+  - One key difference between the CSP model and Go’s implementation is that in Go, channels are first-class objects, meaning we can pass them around in functions or even in other channels. This gives us more programming flexibility
+- Reusing common patterns with channels
+  - When we use message passing with channels in Go, there are two main guidelines to follow:
+    - Try to only pass copies of data on channels. This implies that you shouldn’t pass direct pointers on channels in most cases. Passing pointers can result in multiple goroutines sharing memory, which can create race conditions. If you have to pass pointer references, use data structures in an immutable fashion—create them once, and don’t update them. Alternatively, pass a reference via a channel, and then never use it again from the sender.
+    - As much as possible, try not to mix message passing patterns with memory sharing. Using memory sharing together with message passing might create confusion as to the approach adopted in the solution.
+    - ..... Quitting channels
+    - The first pattern we will examine is having a common channel that instructs goroutines to stop processing messages.
+    - But what should we do if our goroutine is consuming from more than one channel? Should we terminate execution when we receive the first close() call or when all the channels are closed? One solution is to use a quit channel together with the select statement. 
+    - In listing 9.2, we have the main() goroutine creating the numbers and quit channels and calling the printNumbers() function. We can then continue generating the numbers and sending them on the numbers channel until the select statement tells us that the quit channel has unblocked. Once the quit channel has unblocked, we can terminate the main() goroutine.
+    - NOTE We are passing copies of the numbers on the channel. We are not sharing any memory because the goroutine has its own isolated memory space.
+    - ..... Pipelining with channels and goroutines
+    - In listing 9.5, we’re passing a copy of the web document on the channel. We can do this since the web pages are only a few KB in size. Using message passing for large objects, such as images or video, in this fashion might have a detrimental effect on performance. Using a memory-sharing architecture might be more suitable for applications sharing large amounts of data and requiring high performance.
+    - Following this pattern of accepting the input channel as a function input parameter and returning the output channel makes building pipelines easy
+    - NOTE This pipeline pattern gives us the ability to easily plug executions together. Each execution is represented by a function that starts a goroutine accepting input channels as arguments and returning the output channels as return values.
+    - When running listing 9.8, the web pages are downloaded sequentially, one after the other, making execution quite slow. Ideally, we’ll want to speed this up and do the downloads concurrently. This is where the next pattern (fan-in and fan-out) comes in handy.
+  - Fanning in and out
+    - DEFINITION In Go, a fan-out concurrency pattern is when multiple goroutines read from the same channel. In this way, we can distribute the work among a set of goroutines.
+    - NOTE Since concurrent processing is non-deterministic, some messages will be processed quicker than others, resulting in messages being processed in an unpredictable order. The fan-out pattern makes sense only if we don’t care about the order of the incoming messages.
+    - The fan-out pattern in our application has created a problem: the outputs of our download goroutines are in separate channels. How can we connect them to the single input channel of our next stage: the extractWords() goroutine?
+    - To keep to this pattern, we need a mechanism that merges the output messages from the different channels into a single output channel. We can then plug the single output channel into the extractWords() goroutine. This is what is called the fan-in pattern.
+    - DEFINITION In Go, a fan-in concurrency pattern occurs when we merge the content from multiple channels into one.
+    - Since goroutines are very lightweight, we can implement this fan-in pattern as a single unit by creating a set of goroutines, one per output channel, and having each goroutine feed a common channel
+    - Each goroutine listens to messages from the output channel, and when a message arrives, it simply forwards it to the common channel.
+    - Having multiple goroutines all feeding into a single common channel creates a problem. we must make a decision about when to close the common channel.
+    - The solution is to only close the common channel when all the goroutines have noticed that the channels from which they are consuming have been closed. As shown in figure 9.9, we can use a waitgroup for this
+    - When we run our new implementation, it runs a lot faster because the downloads are being performed concurrently. As a side effect of doing the downloads together, the order of the extracted words is different every time we run the program.
+  - Flushing results on close
+  - Broadcasting to multiple goroutines
+    - In the previous section, we used the fan-out pattern when we needed to feed the output of one computation to multiple concurrent goroutines. We load-balanced the messages, with each goroutine receiving a distinct subset of the output data. That pattern will not work here, since we want to send a copy of each output message to both the longestWords() and frequentWords() goroutines.
+    - Instead of fan-out, we can use a broadcast pattern—one that replicates messages to a set of output channels
+  - Closing channels after a condition
+    - So far, we haven’t really used the quit channels that we have wired into every goroutine in our application. These quit channels can be used to stop parts of the pipeline on certain conditions.
+    - To implement Take(n), we need a goroutine that simply forwards the messages received from the input to the output channel while keeping a countdown, with every message forwarded reducing the countdown by 1. Once the countdown is 0, the goroutine closes the quit and output channels
+  - Adopting channels as first-class objects
+    - The improvement available in Go over the CSP language that was defined in the original paper is that channels are first-class objects. This means that a channel can be stored as a variable and passed around to other functions. In Go, a channel can also be passed on another channel
+    - In our pipeline, when a number passes through all the existing goroutines and is not discarded, that means we have found a new prime number. The last goroutine in the pipeline will then initialize a new goroutine at the tail of the pipeline and connect to it. This new goroutine will become the new tail of the pipeline, and it will filter out the multiples of the newly found prime. In this way, the pipeline grows dynamically with the number of primes.
+    - Go gives us the ability to treat channels like normal variables.
+
+## 10 - Concurrency patterns
+
+- A significant task in developing a concurrent solution is identifying mostly independent computations—tasks that do not affect each other if they are executed at the same time
+- This process of breaking down our programming into separate concurrent tasks is known as decomposition.
+- Decomposing programs
+  - How can we convert a program or an algorithm so that it can run more efficiently using concurrent programming? Decomposition is the process of subdividing a program into many tasks and recognizing which of these tasks can be executed concurrently.
+  - By looking at the task dependency graph, we can make informed decisions about how best to allocate the tasks so we complete the job more efficiently
+  - To help us break down our programming task and think about the various concurrent tasks, we can consider our programs from two different sides: task and data decomposition
+  - Task decomposition
+    - Task decomposition occurs when we think about the various actions in our program that can be performed in parallel.
+    - In task decomposition, we ask the question, “What are the different parallel actions we can perform to accomplish the job more quickly?”
+    - After obtaining this breakdown of tasks, we can start by outlining the dependencies of each
+  - Data decomposition
+    - We can also break down our program by thinking about how data flows through it. We can, for example, divide the input data and feed it to multiple parallel executions 
+    - This is known as data decomposition, where we ask the question, “How can we organize the data in our program so that we can execute more work in parallel?”
+    - DEFINITION Data decomposition can be done at various points in our process. Input data decomposition occurs when we divide the program’s input data and process it through multiple concurrent executions.
+    - In input data decomposition, we divide the program input and feed it to our various executions.
+    - DEFINITION In output data decomposition, we use the program’s output data to distribute the work amongst our executions.
+    - NOTE Task and data decomposition are principles that should be applied together when designing a concurrent program. Most concurrent applications apply a mixture of task and data decomposition to achieve an efficient solution.
+  - Thinking about granularity
+    - How big should our subtasks or data chunks be when we distribute parts of a problem to various concurrent executions? This is what we call task granularity.
+    - At one end of the granularity spectrum, we have fine-grained tasks, in which the problem is broken down into a large number of small tasks. At the other end, when a problem is split into a few large tasks, we say we have coarse-grained tasks.
+    - The same principles apply to choosing the right type of task granularity for our algorithms and programs. Task granularity has big effects on the parallel execution performance of our software. Determining the best granularity depends on many factors but is dictated mainly by the problem you’re trying to solve.
+    - Splitting a problem into many small tasks (fine grained) means that when our program is executing, it will have more parallelism (if extra processors are present) and a bigger speedup. However, increased synchronization and communication due to our tasks being too fine grained will constrain scalability. As we increase the parallelism, we will have a negligible or even a negative effect on speedup.
+    - TIP Concurrent solutions that require very little communication and synchronization (due to the nature of the problem being solved) generally allow us to have finer-grained solutions and achieve bigger speedups.
+- Concurrency implementation patterns
+  - Loop-level parallelism
+    - A serial program might have a loop to perform the task on each item of the collection, one after the other. 
+    - The loop-level parallelism pattern transforms each iteration task into a concurrent task so it can be performed in parallel.
+    - In this example, we can easily use the loop-level parallelism pattern because there is no dependence between the tasks. The result of computing the hash code for one file does not affect the hash code computation for the next file. If we had enough processors, we could execute each iteration on a separate processor
+    - But what if the computation of an iteration depends on a step being computed in a previous iteration?
+    - DEFINITION Loop-carried dependence is when a step in one iteration depends on another step in a different iteration in the same loop.
+    - we can take advantage of the fact that parts of the instructions inside each iteration are independent and execute those concurrently. We can then use synchronization techniques to compute the carried dependence steps in the correct order.
+    - In our directory hashing application, we can compute the file hash code in parallel because it is independent. In each iteration, we need to wait for the previous iteration to finish and only then add the file hash code to the global directory hash.
+    - Once the goroutine finishes computing the file hash, it must wait for the previous iteration to finish. In our implementation, we use channels to implement this wait. Each goroutine waits to receive a signal from the previous iteration. Once it has computed the partial directory hash code, it then signals that it is complete by sending a channel message to the next iteration.
+  - The fork/join pattern
+    - The fork/join pattern is useful in situations where we need to create a number of executions to perform tasks in parallel, and then we collect and merge the results from these executions.
+    - In this pattern, the program spawns one execution per task and then waits until all of these tasks are complete before proceeding.
+    - In the fork part, the main() goroutine spawns a number of goroutines that execute the deepestNestedBlock() function, and it then outputs the result on a common channel.
+    - The join part of the pattern is when we consume the common output channel and wait for all the goroutines to be complete
+    - NOTE Unlike the previous directory hashing scenario, this example does not rely on the order of the partial results to compute the complete result. Not having this requirement allows us to easily adopt the fork/join pattern, where we can aggregate the results in the join part.
+  - Using worker pools
+    - In some cases, we don’t know how much work we are going to get. It can be difficult to decompose our algorithms and make them work concurrently if the workload will vary depending on the demand. For example, we might have an HTTP server that handles a varying number of requests per second depending on how many users are accessing a website.
+    - In real life, the solution is to have a number of workers and a queue of work. Imagine a bank branch with several tellers serving a single queue of customers. In concurrent programming, the worker pool pattern copies this real-life queue and workers model in programming.
+    - The worker pool pattern and slight variations of it are known under many different names, such as the thread pool pattern, replicated workers, master/worker, or worker-crew model.
+    - In the worker pool pattern, we have a fixed number of goroutines created and ready to accept work. In this pattern, the goroutines are either idle, waiting for a task, or they’re busy executing one. The work gets passed to the worker pool through a common work queue. When all the workers are busy, the work queue increases in size. If the work queue fills to its full capacity, we can stop accepting more work. In some worker pool implementations, the worker pool can also be increased in size by increasing the number of goroutines, up to a limit, to handle the extra load.
+    - NOTE The worker pool pattern is especially useful when creating new threads of execution is expensive. Instead of creating threads on the fly when we have new work, this pattern creates the worker pool before processing begins, and the workers are reused. This way, less time is wasted when we need new work to be done. In Go, creating goroutines is a very fast process, so this pattern doesn’t bring much benefit in terms of performance.
+    - Even though worker pools do not offer much performance benefit in Go, they can still be used to limit the amount of concurrency so that programs and servers don’t run out of resources.
+  - Pipelining
+    - What if the only way to decompose our problem is to have a set of tasks where each task completely depends on the previous one being complete?
+    - When we have this heavy task dependency, applying a pipeline pattern will allow us to do more work in the same amount of time.
+    - The steps in a simple pipeline all follow the same pattern: accept input from an input channel of type X, process X, and produce the result Y on an output channel of type Y
+  - Pipelining properties
+    - In a pipeline, the throughput rate is dictated by the slowest step. The latency of the system is the sum of the time it takes to perform every step along the way.
+    - If our pipeline were real, four people would be working twice as fast but making hardly any difference in terms of throughput. This is because the bottleneck in our pipeline is the baking time. Our slowest step is limited by the fact that we have a slow oven, and it is slowing everything down. To increase the number of cupcakes created per unit of time, we should focus on speeding up our slowest step.
+    - TIP To increase the throughput of a system, it’s always best to focus on the bottleneck of that system. This is the part that is having the greatest effect on slowing down our performance.
+    - For some applications (such as backend batch processing), it’s more important to have high throughput, while for other applications (such as real-time systems), it’s better to improve latency.
+    - TIP To reduce the latency of a pipeline system, we need to improve the speed of most steps in the pipeline.
+    - It’s worth noting that although we have increased throughput, the time it takes to produce a box of cupcakes (the system latency) has not been greatly affected. It now takes 10 seconds to produce a box from start to finish instead of 13 seconds.
+  - Increasing the speed of the slowest node in a pipeline results in an increase in the throughput performance of the entire pipeline.
+  - Increasing the speed of any node in a pipeline results in a reduction in the pipeline’s latency.
+
+## 11 - Avoiding deadlocks
+
+- A deadlock, in a concurrent program, occurs when executions block indefinitely, waiting for each other to release resources. Deadlocks are an undesirable side effect of certain concurrent programs where concurrent executions are trying to acquire exclusive access to multiple resources at the same time.
+- Deadlocks can be quite tricky to identify and debug. As with race conditions, we can have a program that runs without hitches for a long time, and then suddenly the execution halts, for no obvious reason. Understanding the reasons why deadlocks happen allows us to make programming decisions to avoid them.
+- Identifying deadlocks
+  - Picturing deadlocks with resource allocation graphs
+    - Whenever a resource allocation graph contains such a cycle, it means that a deadlock has occurred.
+    - four conditions that must all be present for deadlocks to occur:
+      - Mutual exclusion. Every resource in the system is either being used by one execution or is free.
+      - Wait for condition. Executions holding one or more resources can request more resources.
+      - No preemption. Resources being held by an execution cannot be taken away. Only the execution holding the resources can release them.
+      - Circular wait. There is a circular chain of two or more executions in which each is blocked while waiting for a resource to be released from the next execution in the chain.
+  - Deadlocking in a ledger
+    - NOTE Every time we run listing 11.5, we get slightly different output, not always resulting in a deadlock. This is due to the non-deterministic nature of concurrent executions.
+- Dealing with deadlocks
+  - It’s also worth noting that there is one other approach when dealing with deadlocks: do nothing. Some textbooks refer to this as the ostrich method
+  - Doing nothing to prevent deadlocks only makes sense if we know for certain that in our system, deadlocks are rare, and when they do occur, the consequences are not costly.
+  - Detecting deadlocks
+    - For example, after detecting that a deadlock has occurred, we can have an alert that calls someone who can restart the process. Even better, we can have logic in our code that is notified whenever there is a deadlock and performs a retry operation.
+    - A more complete way to detect a deadlock is to programmatically build a resource allocation graph representing all the goroutines and resources as nodes connected by edges
+    - To detect a cycle in a graph, we can modify a depth-first search algorithm to look for cycles. If we keep track of the nodes visited while performing the traversal and we come across a node that was already visited, we know we have a cycle.
+    - This is the approach adopted by some other frameworks, runtimes, and systems such as databases
+    - If our runtime or system gives us deadlock detection, we can perform various actions whenever it detects a deadlock. One option is to terminate the executions stuck in the deadlock. This is similar to the approach Go’s runtime takes, with the difference that Go terminates the entire process with all the goroutines.
+    - Another option is to return an error to the executions that are requesting the resources whenever the request leads to a deadlock. The execution can then decide to perform some action in response to the error, such as releasing the resources and retrying after some time passes. This is the approach commonly adopted when using many databases. Typically, when a database returns a deadlock error, the database client can roll back the transaction and retry.
+    - Why doesn’t Go’s runtime provide full deadlock detection? Having a mechanism to detect a deadlock by checking for any cycles in a resource allocation graph is a relatively expensive operation in terms of performance. Go’s runtime would have to maintain a resource allocation graph, and each time there was a resource request or release, Go would have to run the cycle-check algorithm on the graph. In an application where we have large numbers of goroutines requesting and releasing resources, this deadlock detection check would slow things down. It would also be unnecessary in many cases when the goroutines were not using multiple exclusive resources at the same time.
+    - Implementing full deadlock detection in database transactions doesn’t typically affect performance. This is because the detection algorithm is fast relative to the slow database operations.
+  - Avoiding deadlocks
+    - We can try to avoid deadlocks by scheduling executions in a manner that doesn’t give rise to deadlocks
+    - The system that is allocating resources (train crossings, in this example) can have smarter logic to assign resources so as to avoid deadlocks
+    - The banker’s algorithm, developed by Edsger Dijkstra, is one such algorithm that can be used to check if a resource is safe to allocate and avoid deadlock. The algorithm can be used only if the following information is known:
+      - The maximum number of each resource that each execution can request
+      - What resources each execution is currently holding
+      - The available number of each resource
+    - DEFINITION Using this information, we can decide if the system is in a safe or unsafe state. Our system state is only safe if there is a way to schedule our executions in which they all reach completion (thus avoiding deadlocks), even if they request their maximum number of resources. Otherwise, the system state is said to be unsafe.
+    - The algorithm works by deciding whether to grant a request for resources. It will grant a request for resources only if the system will still be in a safe state after the resource is assigned. If it leads to an unsafe state, the execution requesting the resources is suspended until it is safe to grant its request.
+    - However, for our application, we do not need to implement the full banker’s algorithm because we know in advance the full set of resources each goroutine will need. Since we’re only locking two specific bank accounts, the source and target accounts, our system can suspend the execution of a goroutine if either of its two accounts are currently being used by another goroutine.
+    - To implement this, we can create an arbitrator whose job it is to suspend the execution of goroutines if they are requesting accounts that are currently in use. Once the accounts become available, the arbitrator can then resume the goroutines. The arbitrator can be implemented by using a condition variable to block the execution of a goroutine until all accounts become available
+    - When a goroutine requests resources that are in use from an arbitrator, the goroutine is made to wait on a condition variable. When another goroutine frees resources, it broadcasts so that any suspended goroutine can check to see if the required resource has become available. In this way, we avoid deadlocking, since the resources are locked only if they are all available.
+    - In practice, deadlock avoidance algorithms, such as the banker’s algorithm, are not very useful when it comes to using them in operating systems and language runtimes because they require advance knowledge of the maximum number of resources that an execution will require. This requirement is unrealistic because operating systems and runtimes cannot be expected to know what resources each process, thread, or goroutine might ask for in advance.
+  - Preventing deadlocks
+    - If we know in advance the full set of exclusive resources that our concurrent execution will use, we can use ordering to prevent deadlocks
+    - The deadlock doesn’t occur because we never get in a situation where both goroutines are holding different locks and requesting the other one. In this scenario, when they both try to obtain lock 1 at the same time, only one goroutine will succeed. The other one will be blocked until both locks are available again. This creates a situation where a goroutine can obtain either all the locks or none.
+    - Whenever we get a transaction to execute, we can define a simple rule that specifies the order in which to acquire the mutex locks. The rule could be that we should acquire the locks in alphabetical order based on the account ID
+    - In a real-life application, the account ID might be numeric or a version 4 UUID, both of which can be ordered.
+    - We can also use this ordering strategy to prevent deadlocks if we don’t know in advance which exclusive resources we need to use. The idea here is not to acquire resources that have a lower order than the ones we’re currently holding. When a situation happens that requires us to acquire a higher-order resource, we can always release the resources being held and request them again in the correct order.
+    - The important rule here is to never lock a lower-order resource if the execution holds a higher one
+- Deadlocking with channels
+  - It’s important to understand that deadlocks aren’t limited to the use of mutexes. Deadlocks can occur whenever executions hold mutually exclusive resources and request other ones—this also applies to channels
+  - A channel’s capacity can be thought of as a mutually exclusive resource. Goroutines can hold a channel while also trying to use another one (by sending or receiving messages).
+  - We can think of a channel as being a collection of read and write resources.
+  - Initially, a non-buffered channel has no read and write resources. A read resource becomes available when another goroutine is trying to write a message. A write operation makes one read resource available while trying to acquire a write resource. Similarly, a read operation makes one write resource available while trying to acquire one read resource.
+  - The deadlocking problem here is shown in figure 11.14. We have created a circular wait condition between our two goroutines. The directory handler is waiting for a file handler’s goroutine to read from the files channel while it’s blocking any writes to the dirs channels. The file handler is waiting for a directory handler’s goroutine to read from the dirs channel while it’s blocking any writes to the files channel.
+  - We might be tempted to think that we can solve the deadlock problem by having a buffer on the file or directory channel. This, however, will only postpone the deadlock. The problem will still occur once we encounter a directory that has more files or subdirectories than our buffer can handle.
+  - We can also attempt to increase the number of goroutines that are running our file handlers. After all, a typical filesystem has substantially more files than directories. Again, however, this would only delay the problem. Once our program navigates to a directory that contains more files than the number of goroutines executing handleFiles(), we will again get into a deadlock situation.
+  - We can prevent the deadlock in this scenario by removing the circular wait. An easy way to do this is to change one of our functions so that we send on the channel by using a newly spawned goroutine
+  - An alternative solution that doesn’t involve creating loads of separate goroutines is to read and write from our channels at the same time by using the select statement. Again, this will break the circular wait that causes deadlocks while using channels. We can adopt this approach in either the directories or the files goroutines. T
+  - Having our goroutine complete the receive or send operation depending on which channel is available gets rid of the circular wait that was causing the deadlock
+  - The select statement lets us wait for two operations at the same time
+  - NOTE Having deadlocks in message-passing programs is often a sign of bad program design. Having a deadlock while using channels means that we have programmed a circular flow of messages going through the same goroutines. Most of the time, we can avoid possible deadlocks by designing our programs so that the flow of messages is not circular.
+
+## 12 - Atomics, spin locks, and futexes
+
