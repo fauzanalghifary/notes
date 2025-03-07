@@ -483,3 +483,35 @@
 
 ## 12 - Atomics, spin locks, and futexes
 
+- In this chapter, we’ll cover the most primitive of the synchronization tools: the atomic variable. We’ll then explore how we can use it to build a mutex using a technique called spin locking. Later, we’ll see how we can optimize the mutex implementation by making use of a futex—an operating system call allowing us to reduce the CPU cycles while waiting for a lock to become free. Finally, we’ll focus on how Go implements the bundled mutex.
+- Lock-free synchronization with atomic variables
+  - Mutexes ensure that critical sections of our concurrent code are executed by only one goroutine at a time. They are used to prevent race conditions
+  - However, mutexes have the effect of turning parts of our concurrent programming into sequential bottlenecks. If we are just updating the value of a simple variable, such as an integer, we can make use of an atomic variable to keep it consistent amongst goroutines without needing to rely on mutexes that turn our code into a sequential block.
+  - Sharing variables with atomic numbers
+    - Atomic variables allow us to perform certain operations that execute without interruption.
+    In addition to changing the addition and subtraction to use atomic operations, we also remove the need to use any mutexes.
+  - Performance penalty when using atomics
+    - Why don’t we just use atomic operations for everything to eliminate the risk of sharing a variable and accidentally forgetting to use synchronization techniques?
+    - Unfortunately, there is a performance penalty to pay whenever we use these atomic variables. Updating a variable in a normal way is quite a bit faster than updating variables with atomic operations.
+    - This is because when using atomics, we are forfeiting many compiler and system optimizations.
+    - whenever atomic operations are used, the system needs to maintain the cached variables consistently. This can be done by flushing to main memory and invalidating any other caches. Having to keep various caches consistent ends up reducing our program performance.
+  - Counting using atomic numbers
+- Implementing a mutex with spin locks
+  - Atomic variables only guarantee atomic updates to one variable at a time.
+  - We can use the CompareAndSwap() function to implement a mutex completely in user space without having to rely on the operating system
+  - If the indicator is showing as free, CompareAndSwap(unlocked, locked) will succeed, and the indicator will be updated to locked. If the indicator is showing as locked, the CompareAndSwap(unlocked, locked) operation will fail, returning false. At this point, we can keep retrying until the indicator changes value and becomes unlocked. This type of mutex is called a spin lock.
+  - DEFINITION A spin lock is a type of lock in which an execution will go into a loop to try to get hold of a lock repeatedly until the lock becomes available.
+  - DEFINITION Resource contention is when an execution (such as a thread, process, or goroutine) uses a resource in a way that blocks and slows down another execution.
+  - The problem with implementing mutexes using spin locks is that when we have high resource contention, such as a goroutine hogging a lock for a long time, other executions will be wasting valuable CPU cycles while spinning and waiting for the lock to be released. In our implementation, the goroutines will be stuck in the loop, executing CompareAndSwap() repeatedly until another goroutine calls unlock(). This waiting in a loop wastes valuable CPU time that could be used to execute other tasks.
+- Improving on spin locking
+  - The problem with yielding is that the runtime (or operating system) doesn’t know that the current execution is waiting for a lock to become available. It is likely that the execution waiting for the lock will be resumed multiple times before the lock is released, wasting valuable CPU time. To help with this, operating systems provide a concept known as a futex.
+  - Futex is short for fast userspace mutex. However, this definition is misleading, as futexes are not mutexes at all. A futex is a wait queue primitive that we can access from user space. It gives us the ability to suspend and awaken an execution on a specific address. Futexes come in handy when we need to implement efficient concurrency primitives such as mutexes, semaphores, and condition variables.
+  - Our mutex implementation in the previous listing is an improvement on the spin lock implementation. When there is resource contention, the executions will not loop needlessly, wasting CPU cycles. Instead, they will wait on a futex. They will be queued until the lock becomes available again.
+  - Although we have made the implementation more efficient in scenarios when we have contention, we have slowed it down in the reverse case. When there is no contention, such as when we are using a single execution, our Unlock() function is slower than the spin lock version. This is because we are always making an expensive system call in futex_wakeup(), even when no other executions are waiting on the futex.
+  - We can further improve the performance of our mutex implementation if we change the meaning of our atomic variable that stands for the lock and instead have it tell us if there is an execution waiting for the lock. We can take the value of 0 as meaning unlocked, 1 as locked, and 2 as telling us that it is locked with executions waiting for the lock. In this way, we will only call futex_wakeup() when we have a value of 2, and we’ll save time whenever there is no contention.
+  - Go’s mutex implementation
+    - Since Go uses a user-level threading model, Go’s mutex does not use futexes directly, as this would result in the underlying kernel-level thread being suspended.
+    - To do all of this, the implementation of sync.mutex in Go makes use of a semaphore. This semaphore implementation takes care of queuing goroutines in cases when the lock is not available. This semaphore is part of the internals of Go and cannot be accessed directly
+    - In the implementation of sync.mutex, when a resumed goroutine fails to acquire the mutex, the same goroutine is suspended again, but this time it is placed at the front of the queue. This ensures that the next time the mutex is unlocked, the goroutine is picked up first. If this repeats for a while and the goroutine fails to acquire the lock after a certain period (set to 1 ms), the mutex switches to starvation mode.
+    - As soon as the mutex is unlocked, it is passed to the goroutine at the front of the waiting queue. Newly arriving goroutines do not try to acquire the mutex, but instead go directly to the tail of the queue and get suspended until it’s their turn
+    - The purpose of this extra complexity is to improve performance while avoiding goroutine starvation. In normal mode, when we have low contention, the mutex is very efficient, as goroutines can acquire the mutex quickly, without having to wait on the queue. When we have high contention and we switch to starvation mode, the mutex ensures that goroutines do not get stuck on the wait queue.
