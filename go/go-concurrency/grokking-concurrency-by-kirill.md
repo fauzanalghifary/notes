@@ -81,7 +81,7 @@
 -  It is similar to a deadlock, but the difference is that the tasks are “polite” and let others do their work first.
 - Livelocks are a subset of a broader set of problems called starvation.
 - Starvation is exactly what it sounds like: a thread is quite literally starved, never gaining access to required resources, and no progress is made.
-- Starvation is one of the basic ideas behind the most famous type of attacks against online services: denial of service (DOS) attacks. In these attacks, the attacker tries to deplete all of the server’s resources. The service starts to run out of available resources (storage, memory, or computing resources), crashes, and cannot provide its services.
+- Starvation is one of the basic ideas behind the most famous type of attacks against online services: denial of service (DOS) attacks. In these attacks, the attacker tries to deplete all the server’s resources. The service starts to run out of available resources (storage, memory, or computing resources), crashes, and cannot provide its services.
 - A possible solution to starvation is to use a scheduling algorithm with priority queuing, which also uses the aging technique. Aging is a technique of gradually increasing the priority of threads waiting in the system for a long time.
 - The producer-consumer pattern is a classic concurrency pattern that describes a situation where one or more tasks produce data and put it into a shared buffer, while one or more tasks consume data from the buffer.
 - It is possible to allow multiple simultaneous reads of data as long as anyone writing the data does so exclusively—that is, as long as there are no simultaneous writers.
