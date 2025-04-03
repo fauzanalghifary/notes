@@ -70,3 +70,24 @@ multiWriters := zerolog.MultiLevelWriter(os.Stdout, lf)
 log.Logger = zerolog.New(multiWriters).With().Timestamp().Logger()
 log.Info().Msg("hello world")
 ```
+
+## Centralized Logging System
+
+- Log collector agent
+  - Collect all logs from applications and send them to a centralized location where you can see and query all the logs in one place.
+  - Example: Fluentd, Fluentbit, Logstash, Grafana Loki, AWS CloudWatch Agent, etc.
+- Collecting log files using Fluentbit
+- Collecting container logs
+- Grafana Loki
+  - Log aggregation system to store and query the logs
+  - Loki focuses on collecting, indexing, and searching logs, making it easier for users to analyze and troubleshoot issues within their applications and systems.
+  - Logs from your applications are collected by a log collector agent and sent to Loki. Loki will act as persistent storage for the logs. 
+  - You can define the log retention, storage type, etc. 
+  - Later, you can query the logs using LogQL and visualize the logs using Grafana and LogCLI.
+- Setting up Loki
+- Sending logs to Loki
+  - In previous module, you have seen how fluentbit collects logs from a file and container’s stdout and send it to its own stdout output. 
+  - In this section, we will send the collected logs to loki.
+  - query: `{app="http-service"} | json | line_format "{{.message}}"`
+- LogQL
+  - query language designed for querying logs in Loki
