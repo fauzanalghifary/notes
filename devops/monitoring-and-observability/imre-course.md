@@ -1,6 +1,8 @@
 ## Source
 
 - https://courses.imrenagi.com/software-instrumentation
+- https://github.com/fauzanalghifary/logging-metrics-tracing-challenges
+- https://github.com/fauzanalghifary/monitoring-and-observability-challenges
 
 ## Observability
 
@@ -91,3 +93,52 @@ log.Info().Msg("hello world")
   - query: `{app="http-service"} | json | line_format "{{.message}}"`
 - LogQL
   - query language designed for querying logs in Loki
+
+## Metrics and Prometheus
+
+- Metrics
+  - a measurement of a service captured at runtime.
+  - few samples: CPU usage, memory usage, request count, error rate, number of orders per second, etc.
+  - used to monitor, to understand the health of a service and to diagnose problems over time.
+  - used to make decision how to act and improve the service.
+  - to understand the root cause of issues during incidents/outage.
+  - You need to look at the metrics from all of those components and try to match all the pieces together to understand the root cause of the problem.
+  - Logs are a record of events that happened in your system. It is designed to be used for debugging and to get detailed explanation about what happened. While you can derived metrics from the logs, typically metrics are more efficient to be used for monitoring and to understand the current state of the system.
+- Prometheus
+  - particularly well-suited for monitoring cloud-native applications and microservices architectures.
+- Setting up Prometheus
+- Metrics types
+  - Counter
+  - Gauge
+  - Histogram
+  - Summary
+- Metrics Query
+- Prebuilt dashboard
+  - https://grafana.com/grafana/dashboards/
+- Exporter
+  - software agent that collects metrics from systems and services and makes them available to Prometheus for monitoring and alerting purposes.
+  - a standalone application that runs alongside the system or service that it is monitoring
+  - How to get the data?
+    - Instrumenting the application (`/metrics` endpoint)
+    - External exporter
+- Host & container metrics
+- Instrumenting Go app
+
+## Metrics and OpenTelemetry
+
+- OpenTelemetry
+  - an Observability framework and toolkit designed to create and manage telemetry data such as traces, metrics, and logs.
+  - vendor- and tool-agnostic, meaning that it can be used with a broad variety of Observability backends, including open source tools like Jaeger and Prometheus, as well as commercial offerings like New Relic, Datadog, and Splunk.
+  - OpenTelemetry is not an observability backend like Jaeger, Prometheus, or other commercial vendors. OpenTelemetry is focused on the generation, collection, management, and export of telemetry
+  - A major goal of OpenTelemetry is that you can easily instrument your applications or systems, no matter their language, infrastructure, or runtime environment.
+  - OpenTelemetry is designed to be vendor agnostic, meaning that you can use OpenTelemetry to instrument your code and export the metrics to any backend of your choice.
+  - OpenTelemetry is not only for collecting metrics, but also traces and logs
+  - So by using OpenTelemetry, you only need to learn a single set of APIs and conventions to collect all of your observability data.
+- Instrumenting application
+  - Meter Provider
+  - Meter
+  - Metric Exporter
+  - Metric Instrument
+- Automatic instrumentation
+  - OpenTelemetry also provides a way to automatically instrument your code to generate metrics, traces, and logs for popular frameworks and libraries such as gRPC, HTTP, and PostgreSQL, Redis, etc
+  - instead of doing many measurements, we can just install a library that will help you to instrument your code automatically
