@@ -1,6 +1,7 @@
 ## Source
 
 - https://courses.imrenagi.com/software-instrumentation
+- https://www.udemy.com/course/instrumentasi-sistem-dan-aplikasi-untuk-software-engineer
 - https://github.com/fauzanalghifary/logging-metrics-tracing-challenges
 - https://github.com/fauzanalghifary/monitoring-and-observability-challenges
 
@@ -142,3 +143,28 @@ log.Info().Msg("hello world")
 - Automatic instrumentation
   - OpenTelemetry also provides a way to automatically instrument your code to generate metrics, traces, and logs for popular frameworks and libraries such as gRPC, HTTP, and PostgreSQL, Redis, etc
   - instead of doing many measurements, we can just install a library that will help you to instrument your code automatically
+
+
+## Tracing & OpenTelemetry
+
+- Tracing
+  - technique to monitor and understand the full path through your distributed application.
+  - give us the big picture of what happens when a request is made to an application
+  - logs and metrics are great for understanding what’s happening in your application, but tracing will help you in understanding the full picture of your application.
+  - Tracing shows you the full path of a request through your application.
+  - Tracing shows you how long each function/step takes and how long it takes for a request to go from one service to another. It helps you to identify bottlenecks and track root cause of any issues in your application.
+  - Tracing helps you to understand the dependencies between services and databases, etc.
+- Jaeger
+  - provides features for monitoring and profiling complex distributed systems by collecting and visualizing traces, which represent the path of a request as it propagates through a system.
+- OpenTelemetry Procotol
+  - vendor-agnostic protocol for transmitting telemetry data
+  - describes the encoding, transport, and delivery mechanism of telemetry data between telemetry sources and intermediate nodes such as collectors and telemetry backends.
+  - You can use OpenTelemetry to collect metrics and traces and then export them to any backend that supports OTLP. To export the telemetry data you will need to use OTLP exporter.
+  - observability backends that support OTLP: OTLP Collector, Jaeger OTLP, NewRelic OTLP, Datadog Ingestion OTLP, Sentry OpenTelemetry, etc.
+  - Behind the scene, OTLP exporter can use either gRPC or HTTP to transmit the telemetry data to the telemetry backend. This is why when you want to use OTLP exporter (you will see later), you will need to initialize a gRPC client or HTTP client to send the telemetry data to the backend.
+- Collecting traces
+- Trace metadata
+- Context propagation
+  - With context propagation, signals can be correlated with each other, regardless of where they are generated.
+  - if you are making call to third-party API from that server; or sending message to message broker (e.g. kafka) which later is consumed by other workers; or sending a task to an asynchronous queue which later is picked by other workers, how can you correlated all these processing into a single trace while all of these computation are happening on across multiple servers?
+  - Propagation is the mechanism that moves context between services and processes. It serializes or deserializes the context object and provides the relevant information to be propagated from one service to another.
