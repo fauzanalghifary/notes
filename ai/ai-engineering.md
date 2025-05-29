@@ -60,3 +60,70 @@
 - Due to the availability of many finetuning frameworks, the finetuning process itself is often straightforward. However, getting data for finetuning is hard. The next chapter is all about data, including data acquisition, data annotations, data synthesis, and data processing.
 - If Chapters 5 to 8 are about improving a model’s quality, Chapter 9 is about making its inference cheaper and faster.
 - The last chapter in the book brings together the different concepts from this book to build an application end-to-end. The second part of the chapter is more product-focused, with discussions on how to design a user feedback system that helps you collect useful feedback while maintaining a good user experience.
+
+# Chapter 1 - Introduction to Building AI Applications with Foundation Models
+
+- AI engineering—the process of building applications on top of readily available models
+- foundation models, the key catalyst behind the explosion of AI engineering
+
+### The Rise of AI Engineering
+
+From Language Models to Large Language Models
+
+- A language model encodes statistical information about one or more languages.
+- The basic unit of a language model is token. A token can be a character, a word, or a part of a word (like -tion), depending on the model
+- The process of breaking the original text into tokens is called tokenization.
+- There are two main types of language models: masked language models and autoregressive language models.
+  - A masked language model is trained to predict missing tokens anywhere in a sequence, using the context from both before and after the missing tokens.
+  - masked language models are commonly used for non-generative tasks such as sentiment analysis and text classification.
+  - An autoregressive language model is trained to predict the next token in a sequence, using only the preceding tokens
+- A model that can generate open-ended outputs is called generative, hence the term generative AI.
+- It’s important to note that completions are predictions, based on probabilities, and not guaranteed to be correct.
+- As simple as it sounds, completion is incredibly powerful. Many tasks, including translation, summarization, coding, and solving math problems, can be framed as completion tasks.
+- Language modeling is just one of many ML algorithms.
+- What’s special about language models?
+  - The answer is that language models can be trained using self-supervision, while many other models require supervision.
+- A drawback of supervision is that data labeling is expensive and time-consuming.
+- Self-supervision helps overcome the data labeling bottleneck
+- In self-supervision, instead of requiring explicit labels, the model can infer labels from the input data. Language modeling is self-supervised because each input sequence provides both the labels (tokens to be predicted) and the contexts the model can use to predict these labels.
+- Self-supervision differs from unsupervision. In self-supervised learning, labels are inferred from the input data. In unsupervised learning, you don’t need labels at all.
+- Self-supervised learning means that language models can learn from text sequences without requiring any labeling. Because text sequences are everywhere—in books, blog posts, articles, and Reddit comments—it’s possible to construct a massive amount of training data, allowing language models to scale up to become LLMs.
+- A model’s size is typically measured by its number of parameters. 
+- A parameter is a variable within an ML model that is updated through the training process
+- In general, though this is not always true, the more parameters a model has, the greater its capacity to learn desired behaviors.
+- Why do larger models need more data? 
+  - Larger models have more capacity to learn, and, therefore, would need more training data to maximize their performance. 
+  - You can train a large model on a small dataset too, but it’d be a waste of compute. You could have achieved similar or better results on this dataset with smaller models.
+
+From Large Language Models to Foundation Models
+
+- While language models are capable of incredible tasks, they are limited to text
+- Being able to process data beyond text is essential for AI to operate in the real world.
+- “incorporating additional modalities (such as image inputs) into LLMs is viewed by some as a key frontier in AI research and development.”
+- While many people still call Gemini and GPT-4V LLMs, they’re better characterized as foundation models.
+- Foundation models mark a breakthrough from the traditional structure of AI research. For a long time, AI research was divided by data modalities
+- A model that can work with more than one data modality is also called a multimodal model
+- Self-supervision works for multimodal models too.
+- Foundation models also mark the transition from task-specific models to general-purpose models.
+- Foundation models, thanks to their scale and the way they are trained, are capable of a wide range of tasks
+- However, you can often tweak a general-purpose model to maximize its performance on a specific task.
+- There are multiple techniques you can use to get the model to generate what you want. 
+  - prompt engineering
+  - retrieval-augmented generation (RAG)
+  - finetune
+- Prompt engineering, RAG, and finetuning are three very common AI engineering techniques that you can use to adapt a model to your needs
+- Adapting an existing powerful model to your task is generally a lot easier than building a model for your task from scratch
+
+From Foundation Models to AI Engineering
+
+- AI engineering refers to the process of building applications on top of foundation models
+- People have been building AI applications for over a decade—a process often known as ML engineering or MLOps (short for ML operations). Why do we talk about AI engineering now?
+- If traditional ML engineering involves developing ML models, AI engineering leverages existing ones.
+- Applications previously thought impossible are now possible, and applications not thought of before are emerging.
+- This makes AI more useful for more aspects of life, vastly increasing both the user base and the demand for AI applications.
+- estimated AI cost for his use cases has gone down two orders of magnitude from April 2022 to April 2023.
+- the biggest opportunity for the vast majority of people will be to adapt these models for specific applications.
+- AI engineering has rapidly emerged as one of the fastest, and quite possibly the fastest-growing, engineering discipline.
+- Many terms are being used to describe the process of building applications on top of foundation models, including ML engineering, MLOps, AIOps, LLMOps, etc. Why did I choose to go with AI engineering for this book?
+
+### Foundation Model Use Cases
