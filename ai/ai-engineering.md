@@ -127,3 +127,18 @@ From Foundation Models to AI Engineering
 - Many terms are being used to describe the process of building applications on top of foundation models, including ML engineering, MLOps, AIOps, LLMOps, etc. Why did I choose to go with AI engineering for this book?
 
 ### Foundation Model Use Cases
+
+- customer experience, employee productivity, and process optimization.
+- cost reduction, process efficiency, growth, and accelerating innovation
+
+### Planning AI Applications
+
+- It’s easy to build a cool demo with foundation models. It’s hard to create a profitable product.
+- Here are a few examples of different levels of risks, ordered from high to low:
+  - If you don’t do this, competitors with AI can make you obsolete.
+  - If you don’t do this, you’ll miss opportunities to boost profits and productivity.
+  - You’re unsure where AI will fit into your business yet, but you don’t want to be left behind
+- The more critical AI is to the application, the more accurate and reliable the AI part has to be. People are more accepting of mistakes when AI isn’t core to the application.
+- A reactive feature shows its responses in reaction to users’ requests or specific actions, whereas a proactive feature shows its responses when there’s an opportunity for it
+  - Because users don’t ask for proactive features, they can view them as intrusive or annoying if the quality is low. Therefore, proactive predictions and generations typically have a higher quality bar.
+- Dynamic features are updated continually with user feedback, whereas static features are updated periodically.
