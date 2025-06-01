@@ -261,3 +261,28 @@ Application development
 
 
 “AI engineering is just software engineering with AI models thrown in the stack.”
+
+
+# Chapter 2 - Understanding Foundation Models
+
+- In general, however, differences in foundation models can be traced back to decisions about training data, model architecture and size, and how they are post-trained to align with human preferences.
+- Since models learn from data, their training data reveals a great deal about their capabilities and limitations
+- Sampling is how a model chooses an output from all possible options. It is perhaps one of the most underrated concepts in AI. Not only does sampling explain many seemingly baffling AI behaviors, including hallucinations and inconsistencies, but choosing the right sampling strategy can also significantly boost a model’s performance with relatively little effort.
+- Concepts covered in this chapter are fundamental for understanding the rest of the book.
+
+### Training Data
+
+- An AI model is only as good as the data it was trained on.
+- If you want a model to improve on a certain task, you might want to include more data for that task in the training data.
+- To address this issue, it’s crucial to curate datasets that align with your specific needs.
+- While language- and domain-specific foundation models can be trained from scratch, it’s also common to finetune them on top of general-purpose models.
+- a model trained with a smaller amount of high-quality data might outperform a model trained with a large amount of low-quality data
+
+Domain-Specific Models
+
+- Even though general-purpose foundation models can answer everyday questions about different domains, they are unlikely to perform well on domain-specific tasks, especially if they never saw these tasks during training.
+- To train a model to perform well on these domain-specific tasks, you might need to curate very specific datasets.
+
+- This section gave a high-level overview of how training data impacts a model’s performance. Next, let’s explore the impact of how a model is designed on its performance.
+
+### Modeling
