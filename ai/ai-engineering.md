@@ -286,3 +286,40 @@ Domain-Specific Models
 - This section gave a high-level overview of how training data impacts a model’s performance. Next, let’s explore the impact of how a model is designed on its performance.
 
 ### Modeling
+
+- Before training a model, developers need to decide what the model should look like. What architecture should it follow? How many parameters should it have?
+
+Model Architecture
+
+- As of this writing, the most dominant architecture for language-based foundation models is the transformer architecture
+- attention mechanism
+- seq2seq
+  - In its most basic form, the encoder processes the input tokens sequentially, outputting the final hidden state that represents the input. The decoder then generates output tokens sequentially, conditioned on both the final hidden state of the input and the previously generated token
+  - 2 problems:
+    - First, the vanilla seq2seq decoder generates output tokens using only the final hidden state of the input. Intuitively, this is like generating answers about a book using the book summary. This limits the quality of the generated outputs.
+    - Second, the RNN encoder and decoder mean that both input processing and output generation are done sequentially, making it slow for long sequences. If an input is 200 tokens long, seq2seq has to wait for each input token to finish processing before moving on to the next
+- Transformer architecture
+  - address seq2seq problems with the attention mechanism.
+  - The attention mechanism allows the model to weigh the importance of different input tokens when generating each output token. This is like generating answers by referencing any page in the book.
+  - With transformers, the input tokens can be processed in parallel, significantly speeding up input processing
+  - While the transformer removes the sequential input bottleneck, transformer-based autoregressive language models still have the sequential output bottleneck.
+- Inference for transformer-based language models, therefore, consists of two steps:
+  - Prefill
+    - The model processes the input tokens in parallel.
+  - Decode
+    - The model generates one output token at a time.
+- As explored later in Chapter 9, the parallelizable nature of prefilling and the sequential aspect of decoding both motivate many optimization techniques to make language model inference cheaper and faster.
+- Attention mechanism
+  - At the heart of the transformer architecture is the attention mechanism
+- Under the hood, the attention mechanism leverages key, value, and query vectors:
+  - The query vector (Q): 
+    - the current state of the decoder at each decoding step
+    -  the person looking for information to create a summary.
+  - Each key vector (K): 
+    - previous token
+    - If each previous token is a page in the book, each key vector is like the page number
+    - at a given decoding step, previous tokens include both input tokens and previously generated tokens.
+  - Each value vector (V):
+    - the actual value of a previous token, as learned by the model.
+    - Each value vector is like the page’s content.
+- The attention mechanism computes how much attention to give an input token by performing a dot product between the query vector and its key vector. A high score means that the model will use more of that page’s content (its value vector) when generating the book’s summary. 
