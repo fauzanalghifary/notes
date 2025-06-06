@@ -323,3 +323,21 @@ Model Architecture
     - the actual value of a previous token, as learned by the model.
     - Each value vector is like the page’s content.
 - The attention mechanism computes how much attention to give an input token by performing a dot product between the query vector and its key vector. A high score means that the model will use more of that page’s content (its value vector) when generating the book’s summary. 
+  - Because each previous token has a corresponding key and value vector, the longer the sequence, the more key and value vectors need to be computed and stored. This is one reason why it’s so hard to extend context length for transformer models.
+- in general, each transformer block contains the attention module and the MLP (multi-layer perceptron) module:
+  -Attention module: Each attention module consists of four weight matrices: query, key, value, and output projection.
+  - MLP module
+- Note that while the increased context length impacts the model’s memory footprint, it doesn’t impact the model’s total number of parameters.
+- Modeling long sequences remains a core challenge in developing LLMs.
+
+Model Size
+
+- In general, increasing a model’s parameters increases its capacity to learn, resulting in better models.
+- The number of parameters helps us estimate the compute resources needed to train and run this model. 
+- A larger model can also underperform a smaller model if it’s not trained on enough data.
+- When discussing model size, it’s important to consider the size of the data it was trained on. For most models, dataset sizes are measured by the number of training samples
+- A better measurement is the number of tokens in the dataset.
+- As of this writing, LLMs are trained using datasets in the order of trillions of tokens.
+- The number of tokens in a model’s dataset isn’t the same as its number of training tokens. The number of training tokens measures the tokens that the model is trained on. If a dataset contains 1 trillion tokens and a model is trained on that dataset for two epochs—an epoch is a pass through the dataset—the number of training tokens is 2 trillion.
+- While this section focuses on the scale of data, quantity isn’t the only thing that matters. Data quality and data diversity matter, too. Quantity, quality, and diversity are the three golden goals for training data
+- What’s considered good utilization depends on the model, the workload, and the hardware. Generally, if you can get half the advertised performance, 50% utilization, you’re doing okay. Anything above 70% utilization is considered great.
