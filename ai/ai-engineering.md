@@ -341,3 +341,13 @@ Model Size
 - The number of tokens in a model’s dataset isn’t the same as its number of training tokens. The number of training tokens measures the tokens that the model is trained on. If a dataset contains 1 trillion tokens and a model is trained on that dataset for two epochs—an epoch is a pass through the dataset—the number of training tokens is 2 trillion.
 - While this section focuses on the scale of data, quantity isn’t the only thing that matters. Data quality and data diversity matter, too. Quantity, quality, and diversity are the three golden goals for training data
 - What’s considered good utilization depends on the model, the workload, and the hardware. Generally, if you can get half the advertised performance, 50% utilization, you’re doing okay. Anything above 70% utilization is considered great.
+- In summary, three numbers signal a model’s scale:
+  - Number of parameters, which is a proxy for the model’s learning capacity.
+  - Number of tokens a model was trained on, which is a proxy for how much a model learned.
+  - Number of FLOPs, which is a proxy for the training cost.
+- They found that larger language models are sometimes (only sometimes) worse on tasks that require memorization and tasks with strong priors.
+- Scaling law
+  - Model performance depends on the model size and the dataset size.
+  - Bigger models and bigger datasets require more compute.
+  - Compute costs money.
+
