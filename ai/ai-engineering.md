@@ -346,8 +346,29 @@ Model Size
   - Number of tokens a model was trained on, which is a proxy for how much a model learned.
   - Number of FLOPs, which is a proxy for the training cost.
 - They found that larger language models are sometimes (only sometimes) worse on tasks that require memorization and tasks with strong priors.
-- Scaling law
+- ...
   - Model performance depends on the model size and the dataset size.
   - Bigger models and bigger datasets require more compute.
   - Compute costs money.
+- Given a compute budget, the rule that helps calculate the optimal model size and dataset size is called the Chinchilla scaling law
+- for compute-optimal training, you need the number of training tokens to be approximately 20 times the model size.
+- The model size and the number of training tokens should be scaled equally: for every doubling of the model size, the number of training tokens should also be doubled.
+- Smaller models are easier to work with and cheaper to run inference on, which helped their models gain wider adoption
+- The performance of a model depends heavily on the values of its hyperparameters
+- A parameter can be learned by the model during the training process. A hyperparameter is set by users to configure the model and control how the model learns. Hyperparameters to configure the model include the number of layers, the model dimension, and vocabulary size. Hyperparameters to control how a model learns include batch size, number of epochs, learning rate, per-layer initial variance, and more.
+- While it’s hard to answer these questions, there are already two visible bottlenecks for scaling: training data and electricity.
+- Once the publicly available data is exhausted, the most feasible paths for more human-generated training data is proprietary data.
+- the next critical set of design choices: how to align models with human preferences.
 
+### Post-Training
+
+- in general, post-training consists of two steps:
+  - Supervised finetuning (SFT): Finetune the pre-trained model on high-quality instruction data to optimize models for conversations instead of completion.
+  - Preference finetuning: Further finetune the model to output responses that align with human preference. Preference finetuning is typically done with reinforcement learning (RL)
+- For language-based foundation models, pre-training optimizes token-level quality, where the model is trained to predict the next token accurately. However, users don’t care about token-level quality—they care about the quality of the entire response. Post-training, in general, optimizes the model to generate responses that users prefer. Some people compare pre-training to reading to acquire knowledge, while post-training is like learning how to use that knowledge.
+- As post-training consumes a small portion of resources compared to pre-training (InstructGPT used only 2% of compute for post-training and 98% for pre-training), you can think of post-training as unlocking the capabilities that the pre-trained model already has but are hard for users to access via prompting alone.
+- Note that a combination of pre-training, SFT, and preference finetuning is the popular solution for building foundation models today, but it’s not the only solution
+
+Supervised Finetuning
+
+- 
