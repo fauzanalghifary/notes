@@ -371,4 +371,32 @@ Model Size
 
 Supervised Finetuning
 
-- 
+- pre-trained model is likely optimized for completion rather than conversing
+- demonstration data.
+- behavior cloning: you demonstrate how the model should behave, and the model clones this behavior.
+- good labelers are important for AIs to learn how to conduct intelligent conversations
+- Companies, therefore, often use highly educated labelers to generate demonstration data
+- Technically, you can train a model from scratch on the demonstration data instead of finetuning a pre-trained model, effectively eliminating the self-supervised pre-training step. However, the pre-training approach often has returned superior results.
+
+Preference Finetuning
+
+- Demonstration data teaches the model to have a conversation but doesn’t teach the model what kind of conversations it should have. For example, if a user asks the model to write an essay about why one race is inferior or how to hijack a plane, should the model comply?
+- The goal of preference finetuning is to get AI models to behave according to human preference.
+- given the ambitious nature of the goal, the solution we have today is complicated. The earliest successful preference finetuning algorithm, which is still popular today, is RLHF
+- RLHF:
+  - Train a reward model that scores the foundation model’s outputs.
+  - Optimize the foundation model to generate responses for which the reward model will give maximal scores.
+- While RLHF is still used today, newer approaches like DPO
+- RLHF, while more complex than DPO, provides more flexibility to tweak the model
+- RLHF relies on a reward model. Given a pair of (prompt, response), the reward model outputs a score for how good the response is. Training a model to score a given input is a common ML task. The challenge, similar to that of SFT, is to obtain reliable data.
+- Evaluating each sample independently is also called pointwise evaluation.
+- An easier task is to ask labelers to compare two responses and decide which one is better.
+- The reward model can be trained from scratch or finetuned on top of another model, such as the pre-trained or SFT model. Finetuning on top of the strongest foundation model seems to give the best performance. Some people believe that the reward model should be at least as powerful as the foundation model to be able to score the foundation model’s responses. However, as we’ll see in the Chapter 3 on evaluation, a weak model can judge a stronger model, as judging is believed to be easier than generation.
+- Empirically, RLHF and DPO both improve performance compared to SFT alone. However, as of this writing, there are debates on why they work. As the field evolves, I suspect that preference finetuning will change significantly in the future
+- Both SFT and preference finetuning are steps taken to address the problem created by the low quality of data used for pre-training. If one day we have better pre-training data or better ways to train foundation models, we might not need SFT and preference at all.
+- Some companies find it okay to skip reinforcement learning altogether. For example, Stitch Fix and Grab find that having the reward model alone is good enough for their applications. They get their models to generate multiple outputs and pick the ones given high scores by their reward models. This approach, often referred to as the best of N strategy, leverages how a model samples outputs to improve its performance
+
+### Sampling
+
+- A model constructs its outputs through a process known as sampling.
+- Sampling makes AI’s outputs probabilistic. Understanding this probabilistic nature is important for handling AI’s behaviors, such as inconsistency and hallucination. This section ends with a deep dive into what this probabilistic nature means and how to work with it.
