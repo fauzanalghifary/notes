@@ -400,3 +400,15 @@ Preference Finetuning
 
 - A model constructs its outputs through a process known as sampling.
 - Sampling makes AI’s outputs probabilistic. Understanding this probabilistic nature is important for handling AI’s behaviors, such as inconsistency and hallucination. This section ends with a deep dive into what this probabilistic nature means and how to work with it.
+
+Sampling Fundamentals
+
+- Given an input, a neural network produces an output by first computing the probabilities of possible outcomes
+- For a language model, to generate the next token, the model first computes the probability distribution over all tokens in the vocabulary
+- When working with possible outcomes of different probabilities, a common strategy is to pick the outcome with the highest probability. Always picking the most likely outcome = is called greedy sampling. This often works for classification tasks. For example, if the model thinks that an email is more likely to be spam than not spam, it makes sense to mark it as spam. However, for a language model, greedy sampling creates boring outputs. Imagine a model that, for whatever question you ask, always responds with the most common words.
+- Instead of always picking the next most likely token, the model can sample the next token according to the probability distribution over all possible values. Given the context of “My favorite color is …” as shown in Figure 2-14, if “red” has a 30% chance of being the next token and “green” has a 50% chance, “red” will be picked 30% of the time, and “green” 50% of the time.
+
+Sampling Strategies
+
+- The right sampling strategy can make a model generate responses more suitable for your application
+- For example, one sampling strategy can make the model generate more creative responses, whereas another strategy can make its generations more predictable
