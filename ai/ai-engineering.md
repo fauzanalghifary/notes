@@ -412,3 +412,23 @@ Sampling Strategies
 
 - The right sampling strategy can make a model generate responses more suitable for your application
 - For example, one sampling strategy can make the model generate more creative responses, whereas another strategy can make its generations more predictable
+- Temperature
+  - One problem with sampling the next token according to the probability distribution is that the model can be less creative.
+  - To redistribute the probabilities of the possible values, you can sample with a temperature. Intuitively, a higher temperature reduces the probabilities of common tokens, and as a result, increases the probabilities of rarer tokens. This enables models to create more creative responses.
+  - The higher the temperature, the less likely it is that the model is going to pick the most obvious value (the value with the highest logit), making the model’s outputs more creative but potentially less coherent. The lower the temperature, the more likely it is that the model is going to pick the most obvious value, making the model’s output more consistent but potentially more boring.
+  - A temperature of 0.7 is often recommended for creative use cases, as it balances creativity and predictability, but you should experiment and find the temperature that works best for you.
+  - It’s common practice to set the temperature to 0 for the model’s outputs to be more consistent. Technically, temperature can never be 0—logits can’t be divided by 0. In practice, when we set the temperature to 0, the model just picks the token with the largest logit,25 without doing logit adjustment and softmax calculation.
+  - A common debugging technique when working with an AI model is to look at the probabilities this model computes for given inputs. For example, if the probabilities look random, the model hasn’t learned much.
+  - Logprobs, short for log probabilities, are probabilities in the log scale. Log scale is preferred when working with a neural network’s probabilities because it helps reduce the underflow problem
+  - logprobs are useful for building applications (especially for classification), evaluating applications, and understanding how models work under the hood. However, as of this writing, many model providers don’t expose their models’ logprobs, or if they do, the logprobs API is limited.27 The limited logprobs API is likely due to security reasons as a model’s exposed logprobs make it easier for others to replicate the model.
+- Top-k
+  - Top-k is a sampling strategy to reduce the computation workload without sacrificing too much of the model’s response diversity.
+  - A smaller k value makes the text more predictable but less interesting, as the model is limited to a smaller set of likely words.
+- Top-p
+  - In top-k sampling, the number of values considered is fixed to k. However, this number should change depending on the situation.
+  - Top-p, also known as nucleus sampling, allows for a more dynamic selection of values to be sampled from. In top-p sampling, the model sums the probabilities of the most likely next values in descending order and stops when the sum reaches p. Only the values within this cumulative probability are considered.
+  - Common values for top-p (nucleus) sampling in language models typically range from 0.9 to 0.95. A top-p value of 0.9, for example, means that the model will consider the smallest set of values whose cumulative probability exceeds 90%.
+  - In theory, there don’t seem to be a lot of benefits to top-p sampling. However, in practice, top-p sampling has proven to work well, causing its popularity to rise.
+- Stopping condition
+
+Test Time Compute
