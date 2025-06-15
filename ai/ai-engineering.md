@@ -432,3 +432,74 @@ Sampling Strategies
 - Stopping condition
 
 Test Time Compute
+
+- One simple way to improve a model’s response quality is test time compute: instead of generating only one response per query, you generate multiple responses to increase the chance of good responses.
+- you randomly generate multiple outputs and pick one that works best
+- However, you can also be more strategic about how to generate multiple outputs. For example, instead of generating all outputs independently, which might include many less promising candidates, you can use beam search to generate a fixed number of most promising candidates (the beam) at each step of sequence generation.
+- To pick the best output, you can either show users multiple outputs and let them choose the one that works best for them, or you can devise a method to select the best one.
+- They found that using a verifier significantly boosted the model performance. In fact, the use of verifiers resulted in approximately the same performance boost as a 30× model size increase
+- DeepMind further proves the value of test time compute, arguing that scaling test time compute (e.g., allocating more compute to generate more outputs during inference) can be more efficient than scaling model parameters
+- You can also use application-specific heuristics to select the best response. For example, if your application benefits from shorter responses, you can pick the shortest candidate. If your application converts natural language to SQL queries, you can get the model to keep on generating outputs until it generates a valid SQL query.
+- A model is considered robust if it doesn’t dramatically change its outputs with small variations in the input. The less robust a model is, the more you can benefit from sampling multiple outputs
+- For one project, we used AI to extract certain information from an image of the product. We found that for the same image, our model could read the information only half of the time. For the other half, the model said that the image was too blurry or the text was too small to read. However, by trying three times with each image, the model was able to extract the correct information for most images.
+
+
+## Structured Outpus
+
+- Structured outputs are crucial for the following two scenarios:
+  - Tasks requiring structured outputs. The most common category of tasks in this scenario is semantic parsing
+  - Tasks whose outputs are used by downstream applications. In this scenario, the task itself doesn’t need the outputs to be structured, but because the outputs are used by other applications, they need to be parsable by these applications.
+- Note that an API’s JSON mode typically guarantees only that the outputs are valid JSON—not the content of the JSON objects
+- You can guide a model to generate structured outputs at different layers of the AI stack: prompting, post-processing, test time compute, constrained sampling, and finetuning. The first three are more like bandages. They work best if the model is already pretty good at generating structured outputs and just needs a little nudge. For intensive treatment, you need constrained sampling and finetuning.
+- Prompting
+  - Prompting is the first line of action for structured outputs. You can instruct a model to generate outputs in any format. However, whether a model can follow this instruction depends on the model’s instruction-following capability (discussed in Chapter4), and the clarity of the instruction (discussed in Chapter5).
+  - To increase the percentage of valid outputs, some people use AI to validate and/or correct the output of the original prompt. This is an example of the AI as a judge approach discussed in Chapter 3. This means that for each output, there will be at least two model queries: one to generate the output and one to validate it. While the added validation layer can significantly improve the validity of the outputs, the extra cost and latency incurred by the extra validation queries can make this approach too expensive for some.
+- Post-processing
+  - Post-processing is simple and cheap but can work surprisingly well.
+  - When I started working with foundation models, I noticed the same thing. A model tends to repeat similar mistakes across queries. This means if you find the common mistakes a model makes, you can potentially write a script to correct them.
+  - LinkedIn’s defensive YAML parser increased the percentage of correct YAML outputs from 90% to 99.99%
+  - JSON and YAML are common text formats. LinkedIn found that their underlying model, GPT-4, worked with both, but they chose YAML as their output format because it is less verbose, and hence requires fewer output tokens than JSON
+  - Post-processing works only if the mistakes are easy to fix. This usually happens if a model’s outputs are already mostly correctly formatted, with occasional small errors.
+- Constrained sampling
+  - Constraint sampling is a technique for guiding the generation of text toward certain constraints. It is typically followed by structured output tools.
+  - At a high level, to generate a token, the model samples among values that meet the constraints.
+  - Building out that grammar and incorporating it into the sampling process is nontrivial. Because each output format—JSON, YAML, regex, CSV, and so on—needs its own grammar, constraint sampling is less generalizable. Its use is limited to the formats whose grammars are supported by external tools or by your team. Grammar verification can also increase generation latency
+  - Some are against constrained sampling because they believe the resources needed for constrained sampling are better invested in training models to become better at following instructions.
+- Finetuning
+  - Finetuning a model on examples following your desirable format is the most effective and general approach to get models to generate outputs in this format.34 It can work with any expected format. While simple finetuning doesn’t guarantee that the model will always output the expected format, it is much more reliable than prompting.
+  - End-to-end training requires more resources, but promises better performance.
+  - We need techniques for structured outputs because of the assumption that the model, by itself, isn’t capable of generating structured outputs. However, as models become more powerful, we can expect them to get better at following instructions. I suspect that in the future, it’ll be easier to get models to output exactly what we need with minimal prompting, and these techniques will become less important.
+
+The Probabilistic Nature of AI
+
+- The way AI models sample their responses makes them probabilistic.
+- The opposite of probabilistic is deterministic, when the outcome can be determined without any random variation.
+- This probabilistic nature can cause inconsistency and hallucinations. Inconsistency is when a model generates very different responses for the same or slightly different prompts. Hallucination is when a model gives a response that isn’t grounded in facts.
+- Anything with a non-zero probability, no matter how far-fetched or wrong, can be generated by AI
+- This probabilistic nature makes AI great for creative tasks. What is creativity but the ability to explore beyond the common paths—to think outside the box? AI is a great sidekick for creative professionals. It can brainstorm limitless ideas and generate never-before-seen designs. However, this same probabilistic nature can be a pain for everything else.
+- Inconsistency
+  - Model inconsistency manifests in two scenarios:
+    - Same input, different outputs: Giving the model the same prompt twice leads to two very different responses.
+    - Slightly different input, drastically different outputs: Giving the model a slightly different prompt, such as accidentally capitalizing a letter, can lead to a very different output.
+  - Inconsistency can create a jarring user experience. In human-to-human communication, we expect a certain level of consistency.
+  - users expect a certain level of consistency when communicating with AI.
+  - For the same input, different outputs scenario, there are multiple approaches to mitigate inconsistency. You can cache the answer so that the next time the same question is asked, the same answer is returned. You can fix the model’s sampling variables, such as temperature, top-p, and top-k values, as discussed earlier. You can also fix the seed variable, which you can think of as the starting point for the random number generator used for sampling the next token.
+  - Even if you fix all these variables, however, there’s no guarantee that your model will be consistent 100% of the time
+  - Fixing the output generation settings is a good practice, but it doesn’t inspire trust in the system. Imagine a teacher who gives you consistent scores only if that teacher sits in one particular room. If that teacher sits in a different room, that teacher’s scores for you will be wild.
+  - The second scenario—slightly different input, drastically different outputs—is more challenging. Fixing the model’s output generation variables is still a good practice, but it won’t force the model to generate the same outputs for different inputs. It is, however, possible to get models to generate responses closer to what you want with carefully crafted prompts (discussed in Chapter5) and a memory system (discussed in Chapter6).
+- Hallucination
+  - Hallucinations are fatal for tasks that depend on factuality.
+  - The first hypothesis, originally expressed by Ortega et al. at DeepMind in 2021, is that a language model hallucinates because it can’t differentiate between the data it’s given and the data it generates.
+  - The DeepMind paper showed that hallucinations can be mitigated by two techniques. The first technique comes from reinforcement learning, in which the model is made to differentiate between user-provided prompts (called observations about the world in reinforcement learning) and tokens generated by the model (called the model’s actions). The second technique leans on supervised learning, in which factual and counterfactual signals are included in the training data.
+  - The second hypothesis is that hallucination is caused by the mismatch between the model’s internal knowledge and the labeler’s internal knowledge. This view was first argued by Leo Gao, an OpenAI researcher.
+  - Based on the assumption that a foundation model knows what it knows, some people try to reduce hallucination with prompts, such as adding “Answer as truthfully as possible, and if you’re unsure of the answer, say, ‘Sorry, I don’t know.’” Asking models for concise responses also seems to help with hallucinations—the fewer tokens a model has to generate, the less chance it has to make things up. Prompting and context construction techniques in Chapters 5 and 6 can also help mitigate hallucinations.
+  - If we can’t stop hallucinations altogether, can we at least detect when a model hallucinates so that we won’t serve those hallucinated responses to users? Well, detecting hallucinations isn’t that straightforward either—think about how hard it is for us to detect when another human is lying or making things up. But people have tried. We discuss how to detect and measure hallucinations in Chapter 4.
+
+### Summary
+
+- A crucial factor affecting a model’s performance is its training data.
+- After sourcing the data, model development can begin. While model training often dominates the headlines, an important step prior to that is architecting the model.
+- The scale of a model can be measured by three key numbers: the number of parameters, the number of training tokens, and the number of FLOPs needed for training. Two aspects that influence the amount of compute needed to train a model are the model size and the data size.
+- Due to the low quality of training data and self-supervision during pre-training, the resulting model might produce outputs that don’t align with what users want. This is addressed by post-training, which consists of two steps: supervised finetuning and preference finetuning.
+- Sampling makes AI models probabilistic. This probabilistic nature is what makes models like ChatGPT and Gemini great for creative tasks and fun to talk to. However, this probabilistic nature also causes inconsistency and hallucinations.
+- Working with AI models requires building your workflows around their probabilistic nature. The rest of this book will explore how to make AI engineering, if not deterministic, at least systematic. The first step toward systematic AI engineering is to establish a solid evaluation pipeline to help detect failures and unexpected changes. Evaluation for foundation models is so crucial that I dedicated two chapters to it, starting with the next chapter.
