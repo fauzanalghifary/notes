@@ -49,3 +49,10 @@
 - Ruby uses ‹(?m)› to turn on “dot matches line breaks” mode
 
 ### 2.5 Match Something at the Start and/or the End of a Line
+
+- The regular expression tokens ‹^›, ‹$›, ‹\A›, ‹\Z›, and ‹\z› are called anchors. They do not match any characters. Instead, they match at certain positions, effectively anchoring the regular expression match at those positions.
+- A line is the part of the subject text that lies between the start of the subject and a line break, between two line breaks, or between a line break and the end of the subject
+- If there are no line breaks in the subject, then the whole subject is considered to be one line.
+- The anchor ‹\A› always matches at the very start of the subject text, before the first character
+- Unless you’re using JavaScript, we recommend that you always use ‹\A› instead of ‹^›. The meaning of ‹\A› never changes, avoiding any confusion or mistakes in setting regex options.
+- Place ‹\Z› or ‹\z› at the end of your regular expression to test whether the subject text ends with the text you want to match.
