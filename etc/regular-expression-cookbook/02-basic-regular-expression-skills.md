@@ -215,3 +215,199 @@ Named backreferences
 - Just as named capturing groups are functionally identical to numbered capturing groups, named backreferences are functionally identical to numbered backreferences. They’re just easier to read and maintain.
 
 ### 2.12 Repeat Part of the Regex a Certain Number of Times
+
+Fixed repetition
+
+- The quantifier `‹{n}›`, where n is a nonnegative integer, repeats the preceding regex token n number of times. The ‹\d{100}› in ‹\b\d{100}\b› matches a string of 100 digits. You could achieve the same by typing ‹\d› 100 times.
+- ‹{1}› repeats the preceding token once, as it would without any quantifier. ‹ab{1}c› is the same regex as ‹abc›.
+- ‹{0}› repeats the preceding token zero times, essentially deleting it from the regular expression. ‹ab{0}c› is the same regex as ‹ac›.
+
+Variable repetition
+
+- For variable repetition, we use the quantifier `‹{n,m}›`, where n is a nonnegative integer and m is greater than n. ‹\b[a-f0-9]{1,8}\b› matches a hexadecimal number with one to eight digits.
+- If n and m are equal, we have fixed repetition. ‹\b\d{100,100}\b› is the same regex as ‹\b\d{100}\b›.
+
+Infinite repetition
+
+- The quantifier `‹{n,}›`, where n is a nonnegative integer, allows for infinite repetition. Essentially, infinite repetition is variable repetition without an upper limit.
+- `‹\d{1,}›` matches one or more digits, and `‹\d+›` does the same. A plus after a regex token that’s not a quantifier means “one or more.” Recipe2.13 shows the meaning of a plus after a quantifier.
+- `‹\d{0,}›` matches zero or more digits, and `‹\d*›` does the same. The asterisk always means “zero or more.” In addition to allowing infinite repetition, ‹{0,}› and the asterisk also make the preceding token optional.
+
+Making something optional
+
+- If we use variable repetition with n set to zero, we’re effectively making the token that precedes the quantifier optional. 
+- `‹h{0,1}›` matches the ‹h› once or not at all. If there is no h, ‹h{0,1}› results in a zero-length match. If you use ‹h{0,1}› as a regular expression all by itself, it will find a zero-length match before each character in the subject text that is not an h. Each h will result in a match of one character (the h).
+- `‹h?›` does the same as `‹h{0,1}›`. 
+
+Repeating groups
+
+- If you place a quantifier after the closing parenthesis of a group, the whole group is repeated. 
+  - ‹(?:abc){3}› is the same as ‹abcabcabc›.
+- Quantifiers can be nested.
+  - ‹(e\d+)?› matches an e followed by one or more digits, or a zero-length match.
+- Capturing groups can be repeated.
+  - As explained in Recipe2.9, the group’s match is captured each time the engine exits the group, overwriting any text previously matched by the group
+  - ‹(\d\d){1,3}› matches a string of two, four, or six digits. The engine exits the group three times. When this regex matches 123456, the capturing group will hold 56, because 56 was stored by the last iteration of the group. The other two matches by the group, 12 and 34, cannot be retrieved.
+  - ‹(\d\d){3}› captures the same text as ‹\d\d\d\d(\d\d)›
+  - If you want the capturing group to capture all two, four, or six digits rather than just the last two, you have to place the capturing group around the quantifier instead of repeating the capturing group: ‹((?:\d\d){1,3})›. Here we used a noncapturing group to take over the grouping function from the capturing group.
+  - We also could have used two capturing groups: ‹((\d\d){1,3})›. When this last regex matches 123456, ‹\1› holds 123456 and ‹\2› holds 56.
+
+### 2.13 Choose Minimal or Maximal Repetition
+
+- All the quantifiers discussed in Recipe2.12 are greedy, meaning they try to repeat as many times as possible, giving back only when required to allow the remainder of the regular expression to match.
+- Regex: `<p>.*</p>`
+  - The asterisk repeats it zero or more times. The asterisk is greedy, and so `‹.*›` matches everything all the way to the end of the subject text. 
+  - Let me say that again: `‹.*›` eats up your whole XHTML file, starting with the first paragraph.
+  - When the ‹.*› has its belly full, the engine attempts to match the ‹<› at the end of the subject text. That fails. But it’s not the end of the story: the regex engine backtracks.
+  - The asterisk prefers to grab as much text as possible, but it’s also perfectly satisfied to match nothing at all (zero repetitions). With each repetition of a quantifier beyond the quantifier’s minimum, the regular expression stores a backtracking position. Those are positions the engine can go back to, in case the part of the regex following the quantifier fails.
+  - When ‹<› fails, the engine backtracks by making the `‹.*›` give up one character of its match. Then ‹<› is attempted again, at the last character in the file. If it fails again, the engine backtracks once more, attempting ‹<› at the second-to-last character in the file. This process continues until ‹<› succeeds. If ‹<› never succeeds, the `‹.*›` eventually runs out of backtracking positions and the overall match attempt fails.
+  - If ‹<› does match at some point during all that backtracking, ‹/› is attempted. If ‹/› fails, the engine backtracks again. This repeats until ‹</p>› can be matched entirely.
+  - So what’s the problem? Because the asterisk is greedy, the incorrect regular expression matches everything from the first <p> in the XHTML file to the last </p>. But to correctly match an XHTML paragraph, we need to match the first <p> with the first </p> that follows it.
+- That’s where lazy quantifiers come in. You can make any quantifier lazy by placing a question mark after it: `‹*?›, ‹+?›, ‹??›, and ‹{7,42}?›` are all `lazy quantifiers`.
+  - Lazy quantifiers backtrack too, but the other way around. A lazy quantifier repeats as few times as it has to, stores one backtracking position, and allows the regex to continue. If the remainder of the regex fails and the engine backtracks, the lazy quantifier repeats once more. If the regex keeps backtracking, the quantifier will expand until its maximum number of repetitions, or until the regex token it repeats fails to match.
+- `‹<p>.*?</p>›`
+  - `‹<p>.*?</p>›` uses a lazy quantifier to correctly match an XHTML paragraph. When ‹<p>› matches, the `‹.*?›`, lazy as it is, initially does nothing but procrastinate. If ‹</p>› immediately occurs after <p>, an empty paragraph is matched. If not, the engine backtracks to `‹.*?›`, which matches one character. If ‹</p>› still fails, `‹.*?›` matches the next character. This continues until either ‹</p>› succeeds or `‹.*?›` fails to expand. Since the dot matches everything, failure won’t occur until the `‹.*?›` has matched everything up to the end of the XHTML file.
+- The quantifiers `‹*›` and `‹*?›` allow all the same regular expression matches. The only difference is the order in which the possible matches are tried. The greedy quantifier will find the longest possible match. The lazy quantifier will find the shortest possible match.
+- If possible, the best solution is to make sure there is only one possible match.
+- It may help to understand the operation of greedy and lazy repetition by comparing how `‹\d+\b›` and `‹\d+?\b›` act on a couple of different subject texts. The greedy and lazy versions produce the same results, but test the subject text in a different order.
+  - If we use ‹\d+\b› on 1234, ‹\d+› will match all the digits. ‹\b› then matches, and an overall match is found. If we use ‹\d+?\b›, ‹\d+?› first matches only 1. ‹\b› fails between 1 and 2. ‹\d+?› expands to 12, and ‹\b› still fails. This continues until ‹\d+?› matches 1234, and ‹\b› succeeds.
+  - If our subject text is 1234X, the first regex, ‹\d+\b›, still has ‹\d+› match 1234. But then ‹\b› fails. ‹\d+› backtracks to 123. ‹\b› still fails. This continues until ‹\d+› has backtracked to its minimum 1, and ‹\b› still fails. Then the whole match attempt fails.
+  - If we use ‹\d+?\b› on 1234X, ‹\d+?› first matches only 1. ‹\b› fails between 1 and 2. ‹\d+?› expands to 12. ‹\b› still fails. This continues until ‹\d+?› matches 1234, and ‹\b› still fails. The regex engine attempts to expand ‹\d+?› once more, but ‹\d› does not match X. The overall match attempt fails.
+
+### 2.14 Eliminate Needless Backtracking 
+
+- The previous recipe explains the difference between greedy and lazy quantifiers, and how they backtrack. In some situations, this backtracking is unnecessary.
+- ‹\b\d+\b› uses a greedy quantifier, and ‹\b\d+?\b› uses a lazy quantifier. They both match the same thing: an integer. Given the same subject text, both will find the exact same matches. Any backtracking that is done is unnecessary.
+- The easiest solution is to use a possessive quantifier
+  - `\b\d++\b`
+- An atomic group provides exactly the same functionality, using a slightly less readable syntax. Support for atomic grouping is more widespread than support for possessive quantifiers.
+  - `\b(?>\d+)\b`
+- JavaScript and Python do not support possessive quantifiers or atomic grouping. There is no way to eliminate needless backtracking with these two regex flavors
+- A possessive quantifier is similar to a greedy quantifier: it tries to repeat as many times as possible. The difference is that a possessive quantifier will never give back, not even when giving back is the only way that the remainder of the regular expression could match. Possessive quantifiers do not keep backtracking positions.
+  - You can make any quantifier possessive by placing a plus sign after it. For example, `‹*+›, ‹++›, ‹?+›, and ‹{7,42}+›` are all `possessive quantifiers`.
+- Wrapping a greedy quantifier inside an atomic group has the exact same effect as using a possessive quantifier. When the regex engine exits the atomic group, all backtracking positions remembered by quantifiers and alternation inside the group are thrown away. 
+  - The syntax is `‹(?>⋯)›`, where ‹⋯› is any regular expression. An atomic group is essentially a noncapturing group, with the extra job of refusing to backtrack. The question mark is not a quantifier; the opening bracket simply consists of the three characters ‹(?>›.
+- We describe the possessive quantifier as failing to remember backtracking positions, and the atomic group as throwing them away. This makes it easier to understand the matching process, but don’t get hung up on the difference, as it may not even exist in the regex flavor you’re working with. In many flavors, ‹x++› is merely syntactic sugar for ‹(?>x+)›, and both are implemented in exactly the same way. Whether the engine never remembers backtracking positions or throws them away later is irrelevant for the final outcome of the match attempt.
+- Where possessive quantifiers and atomic grouping differ is that a possessive quantifier applies only to a single regular expression token, whereas an atomic group can wrap a whole regular expression.
+- Within the atomic group, backtracking occurs normally. Backtracking positions are thrown away only when the engine exits the whole group.
+- Possessive quantifiers and atomic grouping don’t just optimize regular expressions. They can alter the matches found by a regular expression by eliminating those that would be reached through backtracking.
+- This recipe shows how to use possessive quantifiers and atomic grouping to make minor optimizations, which may not even show any difference in benchmarks. The next recipe will showcase how atomic grouping can make a dramatic difference.
+
+### 2.15 Prevent Runaway Repetition
+
+- Example use case: Use a single regular expression to match a complete HTML file, checking for properly nested html, head, title, and body tags. The regular expression must fail efficiently on HTML files that do not have the proper tags.
+  - `<html>(?>.*?<head>)(?>.*?<title>)(?>.*?</title>)↵
+(?>.*?</head>)(?>.*?<body[^>]*>)(?>.*?</body>).*?</html>`
+- JavaScript and Python do not support atomic grouping. There is no way to eliminate needless backtracking with these two regex flavors. 
+  - When programming in JavaScript or Python, you can solve this problem by doing a literal text search for each of the tags one by one, searching for the next tag through the remainder of the subject text after the one last found.
+    - `<html>.*?<head>.*?<title>.*?</title>↵
+  .*?</head>.*?<body[^>]*>.*?</body>.*?</html>`
+- We call this catastrophic backtracking. So much backtracking occurs that the regex either takes forever or crashes your application. Some regex implementations are clever and will abort runaway match attempts early, but even then the regex will still kill your application’s performance.
+  - Catastrophic backtracking is an instance of a phenomenon known as a combinatorial explosion, in which several orthogonal conditions intersect and all combinations have to be tried. You could also say that the regex is a Cartesian product of the various repetition operators.
+- The solution is to use atomic grouping to prevent needless backtracking
+
+### 2.16 Test for a Match Without Adding It to the Overall Match
+
+- Example use case: Find any word that occurs between a pair of HTML bold tags, without including the tags in the regex match. For instance, if the subject is My <b>cat</b> is furry, the only valid match should be cat.
+  - `(?<=<b>)\w+(?=</b>)`
+- JavaScript and Ruby 1.8 support the lookahead `‹(?=</b>)›`, but not the lookbehind `‹(?<=<b>)›`.
+  - WAIT, JS SUPPORT LOOKBEHIND SINCE ES2018
+  - THIS BOOK IS FROM 2012!!!
+
+Lookaround
+
+- The four kinds of lookaround groups supported by modern regex flavors have the special property of giving up the text matched by the part of the regex inside the lookaround. Essentially, lookaround checks whether certain text can be matched without actually matching it.
+- Lookaround that looks backward is called `lookbehind`. This is the only regular expression construct that will traverse the text from right to left instead of from left to right.
+  - The syntax for positive lookbehind is `‹(?<=⋯)›`. The four characters `‹(?<=›` form the opening bracket
+  - What you can put inside the lookbehind, here represented by ‹⋯›, varies among regular expression flavors. But simple literal text, such as ‹(?<=<b>)›, always works.
+  - Lookbehind checks to see whether the text inside the lookbehind occurs immediately to the left of the position that the regular expression engine has reached
+  - If you match `‹(?<=<b>)›` against `My <b>cat</b> is furry`, the lookbehind will fail to match until the regular expression starts the match attempt at the letter c in the subject. The regex engine then enters the lookbehind group, telling it to look to the left. ‹<b>› matches to the left of c. The engine exits the lookbehind at this point, and discards any text matched by the lookbehind from the match attempt.
+  - In other words, the match-in-progress is back at where it was when the engine entered the lookbehind. In this case, the match-in-progress is the zero-length match before the c in the subject string. The lookbehind only tests or asserts that ‹<b>› can be matched; it does not actually match it. Lookaround constructs are therefore called zero-length assertions.
+- lookaround can match something but can never consume anything.
+- Lookaround that looks forward, in the same direction that the regular expression normally traverses the text, is called `lookahead`.
+  - Lookahead is equally supported by all regex flavors in this book
+  - The syntax for positive lookahead is `‹(?=⋯)›`. The three characters ‹(?=› form the opening bracket of the group
+  - Everything you can use in a regular expression can be used inside lookahead, here represented by ‹⋯›.
+  - When the ‹\w+› in ‹(?<=<b>)\w+(?=</b>)› has matched cat in My <b>cat</b> is furry, the regex engine enters the lookahead. The only special behavior for the lookahead at this point is that the regex engine remembers which part of the text it has matched so far, associating it with the lookahead. ‹</b>› is then matched normally. Now the regex engine exits the lookahead. The regex inside the lookahead matches, so the lookahead itself matches. The regex engine discards the text matched by the lookahead, by restoring the match-in-progress it remembered when entering the lookahead. Our overall match-in-progress is back at cat. Since this is also the end of our regular expression, cat becomes the final match result.
+
+Negative Lookaround
+
+- `‹(?!⋯)›`, with an exclamation point instead of an equals sign, is negative lookahead. Negative lookahead works just like positive lookahead, except that whereas positive lookahead matches when the regex inside the lookahead matches, negative lookahead matches when the regex inside the lookahead fails to match.
+- Similarly, `(?<!⋯)`is negative lookbehind. Negative lookbehind matches when none of the alternatives inside the lookbehind can be found looking backward from the position the regex has reached in the subject text.
+
+Different levels of lookbehind
+
+- Lookahead is easy. All regex flavors discussed in this book allow you to put a complete regular expression inside the lookahead. Everything you can use in a regular expression can be used inside lookahead. You can even nest other lookahead and lookbehind groups inside lookahead. Your brain might get into a twist, but the regex engine will handle everything nicely.
+- Lookbehind is a different story. Regular expression software has always been designed to search the text from left to right only. Searching backward is often implemented as a bit of a hack: the regex engine determines how many characters you put inside the lookbehind, jumps back that many characters, and then compares the text in the lookbehind with the text in the subject from left to right.
+- If all this sounds rather inefficient, it is. Lookbehind is very convenient, but it won’t break any speed records. Later, we present a solution for JavaScript and Ruby 1.8, which don’t support lookbehind at all. This solution is actually far more efficient than using lookbehind.
+
+Matching the same text twice
+
+- If you use lookbehind at the start of the regex or lookahead at the end of the regex, the net effect is that you’re requiring something to appear before or after the regex match, without including it in the match. If you use lookaround in the middle of your regular expression, you can apply multiple tests to the same text.
+
+Lookaround is atomic
+
+- When the regular expression engine exits a lookaround group, it discards the text matched by the lookaround. Because the text is discarded, any backtracking positions remembered by alternation or quantifiers inside the lookaround are also discarded. This effectively makes lookahead and lookbehind atomic
+- In most situations, the atomic nature of lookaround is irrelevant. A lookaround is merely an assertion to check whether the regex inside the lookaround matches or fails. How many different ways it can match is irrelevant, as it does not consume any part of the subject text.
+- The atomic nature comes into play only when you use capturing groups inside lookahead (and lookbehind, if your regex flavor allows you to). While the lookahead does not consume any text, the regex engine will remember which part of the text was matched by any capturing groups inside the lookahead. If the lookahead is at the end of the regex, you will indeed end up with capturing groups that match text not matched by the regular expression itself. If the lookahead is in the middle of the regex, you can end up with capturing groups that match overlapping parts of the subject text.
+- The only situation in which the atomic nature of lookaround can alter the overall regex match is when you use a backreference outside the lookaround to a capturing group created inside the lookaround.
+  - `(?=(\d+))\w+\1`
+  - it wouldn't match `123x12`
+
+Alternative to Lookbehind
+
+- `<b>\K\w+(?=</b>)`
+  - for: PCRE 7.2, Perl 5.10
+
+Solution Without Lookbehind
+
+- There’s no way to solve the problem as stated with these regex flavors, but you can work around the need for lookbehind by using capturing groups.
+  - `(<b>)(\w+)(?=</b>)`
+
+### 2.17 Match One of Two Alternatives Based on a Condition
+
+- Example use case: 
+  - Create a regular expression that matches a comma-delimited list of the words one, two, and three. Each word can occur any number of times in the list, and the words can occur in any order, but each word must appear at least once.
+  - `\b(?:(?:(one)|(two)|(three))(?:,|\b)){3,}(?(1)|(?!))(?(2)|(?!))(?(3)|(?!))`
+  - Java, JavaScript, and Ruby do not support conditionals. When programming in these languages (or any other language), you can use the regular expression without the conditionals, and write some extra code to check if each of the three capturing groups matched something.
+    - `\b(?:(?:(one)|(two)|(three))(?:,|\b)){3,}`
+- .NET, PCRE, Perl, and Python support conditionals using numbered capturing groups
+- `‹(?(1)then|else)›` is a conditional that checks whether the first capturing group has already matched something. If it has, the regex engine attempts to match ‹then›. If the capturing group has not participated in the match attempt thus far, the ‹else› part is attempted.
+- The parentheses, question mark, and vertical bar are all part of the syntax for the conditional. They don’t have their usual meaning. You can use any kind of regular expression for the ‹then› and ‹else› parts. The only restriction is that if you want to use alternation for one of the parts, you have to use a group to keep it together. Only one vertical bar is permitted directly in the conditional.
+- To better understand how conditionals work, let’s examine the regular expression `‹(a)?b(?(1)c|d)›`. This is essentially a complicated way of writing `‹abc|bd›`.
+  - In English, `‹(a)?b(?(1)c|d)›` either matches `ab followed by c`, or matches `b followed by d`.
+
+### 2.18 Add Comments to a Regular Expression
+
+Free-spacing mode
+
+- Regular expressions can quickly become complicated and difficult to understand. Just as you should comment source code, you should comment all but the most trivial regular expressions.
+- All regular expression flavors in this book, except JavaScript, offer an alternative regular expression syntax that makes it very easy to clearly comment your regular expressions. You can enable this syntax by turning on the free-spacing option. It has different names in various programming languages.
+
+### 2.19 Insert Literal Text into the Replacement Text
+
+- Example: Search and replace any regular expression match literally with the eight characters `$%\*$1\1`.
+  - `$%\*$$1\1` (.NET, JavaScript)
+  - `$%\*$1\\1` (Python, Ruby)
+
+When and how to escape characters in replacement text
+
+- This recipe shows you the different escape rules used by the various replacement text flavors. The only two characters you may ever need to escape in the replacement text are the dollar sign and the backslash. The escape characters are also the dollar sign and the backslash.
+- The fact that this problem has five different solutions for seven replacement text flavors demonstrates that there really is no standard for replacement text syntax.
+
+.NET and JavaScript
+
+- .NET and JavaScript always treat a backslash as a literal character. Do not escape it with another backslash, or you’ll end up with two backslashes in the replacement.
+- A lone dollar sign is a literal character. Dollar signs need to be escaped only when they are followed by a digit, ampersand, backtick, straight quote, underscore, plus sign, or another dollar sign. To escape a dollar sign, precede it with another dollar sign. You can double up all dollar signs if you feel that makes your replacement text more readable. This solution is equally valid:
+
+Python and Ruby
+
+- The dollar sign has no special meaning in the replacement text in Python and Ruby. Backslashes need to be escaped with another backslash when followed by a character that gives the backslash a special meaning.
+- For Ruby, you need to escape a backslash followed by a digit, ampersand, backtick, straight quote, or plus sign.
+- In both languages, a backslash also escapes another backslash. Thus, you need to write «\\\\» to include two literal backslashes in replacement text. All other backslashes are treated as literal backslashes.
+
+More escape rules for string literals
+
+- Remember that in this chapter, we deal only with the regular expressions and replacement text themselves. The next chapter covers programming languages and string literals.
+- In other words, if your application provides a text box for the user to type in the replacement text, these solutions show what the user would have to type in order for the search-and-replace to work as intended. If you test your search-and-replace commands with RegexBuddy or another regex tester, the replacement texts included in this recipe will show the expected results.
+- String literals in programming languages have their own escape rules, and you need to follow those rules on top of the replacement text escape rules. You may indeed end up with a mess of backslashes.
