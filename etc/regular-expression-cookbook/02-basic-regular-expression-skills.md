@@ -411,3 +411,55 @@ More escape rules for string literals
 - Remember that in this chapter, we deal only with the regular expressions and replacement text themselves. The next chapter covers programming languages and string literals.
 - In other words, if your application provides a text box for the user to type in the replacement text, these solutions show what the user would have to type in order for the search-and-replace to work as intended. If you test your search-and-replace commands with RegexBuddy or another regex tester, the replacement texts included in this recipe will show the expected results.
 - String literals in programming languages have their own escape rules, and you need to follow those rules on top of the replacement text escape rules. You may indeed end up with a mess of backslashes.
+
+### 2.20 Insert the Regex Match into the Replacement Text
+
+- Example: 
+  - Perform a search-and-replace that converts URLs into HTML links that point to the URL, and use the URL as the text for the link. For this exercise, define a URL as “http:” and all nonwhitespace characters that follow it
+  - or instance, `Please visit http://www.regexcookbook.com` becomes `Please visit <a href="http://www.regexcookbook.com">http://www.regexcookbook.com</a>`
+- Solution:
+  - Regex: `http:\S+`
+  - Replacement:
+    - .NET, JS, Perl: `<a●href="$&">$&</a>`
+    - PHP, Ruby: `<a●href="\0">\0</a>`
+    - Ruby: `<a●href="\&">\&</a>`
+- Discussion
+  - Inserting the whole regex match back into the replacement text is an easy way to insert new text before, after, or around the matched text, or even between multiple copies of the matched text. Unless you’re using Python, you don’t have to add any capturing groups to your regular expression to be able to reuse the overall match.
+  - .NET and JavaScript have adopted the «$&» syntax to insert the regex match into the replacement text. Ruby uses backslashes instead of dollar signs for replacement text tokens, so use «\&» for the overall match.
+
+### 2.21 Insert Part of the Regex Match into the Replacement Text
+
+- Example: 
+  - Match any contiguous sequence of 10 digits, such as 1234567890. Convert the sequence into a nicely formatted phone number—for example, (123) 456-7890.
+- Solution:
+  - Regex: `\b(\d{3})(\d{3})(\d{4})\b`
+  - Replacement:
+    - .NET, Java, JavaScript, PHP, Perl: `($1)●$2-$3`
+    - PHP, Python, Ruby: `(\1)●\2-\3`
+
+Replacements using capturing groups
+
+- Recipe2.10 explains how you can use capturing groups in your regular expression to match the same text more than once. The text matched by each capturing group in your regex is also available after each successful match. You can insert the text of some or all capturing groups—in any order, or even more than once—into the replacement text.
+- Some flavors, such as Python and Ruby, use the same «\1» syntax for backreferences in both the regular expression and the replacement text. Other flavors use Perl’s «$1» syntax, using a dollar sign instead of a backslash. PHP supports both.
+- .NET, Java, JavaScript, and PHP support «$1» only in the replacement syntax.
+
+$10 and higher
+
+- All regex flavors in this book support up to 99 capturing groups in a regular expression. In the replacement text, ambiguity can occur with `«$10»` or `«\10»` and above. These can be interpreted as either the 10th capturing group, or the first capturing group followed by a literal zero.
+
+References to nonexistent groups
+
+- Java, XRegExp, and Python will cry foul by raising an exception or returning an error message. 
+- PHP, Perl, and Ruby substitute all backreferences in the replacement text, including those that point to groups that don’t exist. Groups that don’t exist did not capture any text and therefore references to these groups are simply replaced with nothing.
+- Finally, .NET and JavaScript (without XRegExp) leave backreferences to groups that don’t exist as literal text in the replacement.
+
+### 2.22 Insert Match Context into the Replacement Text
+
+- Example:
+  - Create replacement text that replaces the regex match with the text before the regex match, followed by the whole subject text, followed by the text after the regex match.
+  - For example, if Match is found in BeforeMatchAfter, replace the match with BeforeBeforeMatchAfterAfter, yielding the new text BeforeBeforeBeforeMatchAfterAfterAfter.
+- Solution:
+  - Ruby: `\`\`\&\'\'`
+  - - JS: `$`$`$&$'$'`
+- Discussion: 
+  - The term context refers to the subject text that the regular expression was applied to. There are three pieces of context: the subject text before the regex match, the subject text after the regex match, and the whole subject text. The text before the match is sometimes called the left context, and the text after the match is correspondingly the right context. The whole subject text is the left context, the match, and the right context.
