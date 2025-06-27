@@ -177,3 +177,41 @@ Unicode grapheme
   - So ‹\bJane\b|\bJanet\b› and ‹\bJanet\b|\bJane\b› will both match Janet in Her name is Janet. Because of the word boundaries, only one alternative can match. The order of the alternatives is again irrelevant.
 
 ### 2.9 Group and Capture Parts of the Match
+
+- The alternation operator, explained in the previous section, has the lowest precedence of all regex operators. If you try ‹\bMary|Jane|Sue\b›, the three alternatives are ‹\bMary›, ‹Jane›, and ‹Sue\b›. This regex matches Jane in Her name is Janet.
+- If you want something in your regex to be excluded from the alternation, you have to group the alternatives. Grouping is done with parentheses
+- They have the highest precedence of all regex operators, just as in most programming languages. ‹\b(Mary|Jane|Sue)\b› has three alternatives—‹Mary›, ‹Jane›, and ‹Sue›—between two word boundaries. This regex does not match anything in Her name is Janet.
+- A pair of parentheses isn’t just a group; it’s a `capturing group`. 
+- The regex ‹\b(\d\d\d\d)-(\d\d)-(\d\d)\b› has three capturing groups. Groups are numbered by counting opening parentheses from left to right. ‹(\d\d\d\d)› is group number 1. ‹(\d\d)› is number 2. The second ‹(\d\d)› is group number 3.
+
+Noncapturing groups
+
+- In the regex ‹\b(Mary|Jane|Sue)\b›, we need the parentheses for grouping only. Instead of using a capturing group, we could use a noncapturing group: \b(?:Mary|Jane|Sue)\b
+- The noncapturing group provides the same grouping functionality, but does not capture anything.
+- Another benefit of noncapturing groups is performance. If you’re not going to use a backreference to a particular group (Recipe2.10), reinsert it into the replacement text (Recipe2.21), or retrieve its match in source code (Recipe3.9), a capturing group adds unnecessary overhead that you can eliminate by using a noncapturing group. In practice, you’ll hardly notice the performance difference, unless you’re using the regex in a tight loop and/or on lots of data.
+
+
+### 2.10 Match Previously Matched Text Again
+
+- To match previously matched text later in a regex, we first have to capture the previous text. We do that with a capturing group, as shown in Recipe2.9. After that, we can match the same text anywhere in the regex using a backreference. You can reference the first nine capturing groups with a backslash followed by a single digit one through nine. For groups 10 through 99, use ‹\10› to ‹\99›.
+  - example: `\b\d\d(\d\d)-\1-\1\b`
+- If a capturing group is repeated, either by a quantifier (Recipe2.12) or by backtracking (Recipe2.13), the stored match is overwritten each time the capturing group matches something. A backreference to the group matches only the text that was last captured by the group.
+- Because the regex engine proceeds from start to end, you should put the capturing parentheses before the backreference. The regular expressions ‹\b\d\d\1-(\d\d)-\1› and ‹\b\d\d\1-\1-(\d\d)\b› could never match anything. Since the backreference is encountered before the capturing group, it has not captured anything yet. Unless you’re using JavaScript, a backreference always fails if it points to a group that hasn’t already participated in the match attempt.
+- JavaScript is the only flavor we know that goes against decades of backreference tradition in regular expressions. In JavaScript, or at least in implementations that follow the JavaScript standard, a backreference to a group that hasn’t participated always succeeds, just like a backreference to a group that captured a zero-length match. So, in JavaScript, ‹\b\d\d\1-\1-(\d\d)\b› can match 12--34.
+
+### 2.11 Capture and Name Parts of the Match
+
+- example: 
+  - `\b(?<year>\d\d\d\d)-(?<month>\d\d)-(?<day>\d\d)\b`
+  - \b\d\d(?<magic>\d\d)-\k<magic>-\k<magic>\b
+
+Named capture
+
+- Recipes 2.9 and 2.10 illustrate capturing groups and backreferences. To be more precise: these recipes use numbered capturing groups and numbered backreferences. Each group automatically gets a number, which you use for the backreference.
+- Modern regex flavors support named capturing groups in addition to numbered groups. The only difference between named and numbered groups is your ability to assign a descriptive name, instead of being stuck with automatic numbers. Named groups make your regular expression more readable and easier to maintain. Inserting a capturing group into an existing regex can change the numbers assigned to all the capturing groups. Names that you assign remain the same.
+
+Named backreferences
+
+- Just as named capturing groups are functionally identical to numbered capturing groups, named backreferences are functionally identical to numbered backreferences. They’re just easier to read and maintain.
+
+### 2.12 Repeat Part of the Regex a Certain Number of Times
