@@ -402,4 +402,179 @@ subject.scan(/<b>(.*?)<\/b>/m) {|outergroups|
 
 ### 3.14. Replace All Matches
 
-- 
+- You want to replace all matches of the regular expression ‹before› with the replacement text «after».
+- JavaScript
+  - `result = subject.replace(/before/g, "after");`
+- Ruby
+  - `result = subject.gsub(/before/, 'after')`
+- JavaScript
+  - To search and replace through a string using a regular expression, call the replace() function on the string. Pass your regular expression as the first parameter and the string with your replacement text as the second parameter. The replace() function returns a new string with the replacements applied.
+  - If you want to replace all regex matches in the string, set the /g flag when creating your regular expression object. Recipe 3.4 explains how this works. If you don’t use the /g flag, only the first match will be replaced.
+- Ruby
+  - The gsub() method of the String class does a search-and-replace using a regular expression. Pass the regular expression as the first parameter and a string with the replacement text as the second parameter. The return value is a new string with the replacements applied. If no regex matches can be found, then gsub() returns the original string.
+  - gsub() does not modify the string on which you call the method. If you want the original string to be modified, call gsub!() instead. If no regex matches can be found, gsub!() returns nil. Otherwise, it returns the string you called it on, with the replacements applied.
+
+### 3.15. Replace Matches Reusing Parts of the Match
+
+- You want to run a search-and-replace that reinserts parts of the regex match back into the replacement. The parts you want to reinsert have been isolated in your regular expression using capturing groups, as described in Recipe2.9.
+- For example, you want to match pairs of words delimited by an equals sign, and swap those words in the replacement.
+- JavaScript
+  - `result = subject.replace(/(\w+)=(\w+)/g, "$2=$1");`
+- Ruby
+  - `result = subject.gsub(/(\w+)=(\w+)/, '\2=\1')`
+- JavaScript
+  - In JavaScript, you can use the same string.replace() method described in the previous recipe. The syntax for adding backreferences to the replacement text follows the JavaScript replacement text flavor described in this book.
+- Ruby
+  - In Ruby, you can use the same String.gsub() method described in the previous recipe. The syntax for adding backreferences to the replacement text follows the Ruby replacement text flavor described in this book.
+  - You cannot interpolate variables such as $1 in the replacement text.
+  - That’s because Ruby does variable interpolation before the gsub() call is executed. 
+  - Instead, use replacement text tokens such as «\1». The gsub() function substitutes those tokens in the replacement text for each regex match. We recommend that you use single-quoted strings for the replacement text.
+  - OR
+  - `result = subject.gsub(/(?<left>\w+)=(?<right>\w+)/, '\k<left>=\k<right>')`
+
+### 3.16. Replace Matches with Replacements Generated in Code
+
+- You want to replace all matches of a regular expression with a new string that you build up in procedural code. You want to be able to replace each match with a different string, based on the text that was actually matched.
+- For example, suppose you want to replace all numbers in a string with the number multiplied by two.
+- JavaScript
+```js
+var result = subject.replace(/\d+/g, function(match) {
+    return match * 2;
+});
+```
+- Ruby
+```rb
+result = subject.gsub(/\d+/) {|match|
+    Integer(match) * 2
+}
+```
+- When using a string as the replacement text, you can do only basic text substitution. To replace each match with something totally different that varies along with the match being replaced, you need to create the replacement text in your own code.
+- JavaScript
+  - In JavaScript, a function is really just another object that can be assigned to a variable. Instead of passing a literal string or a variable that holds a string to the string.replace() function, we can pass a function that returns a string. This function is then called each time a replacement needs to be made.
+  - You can make your replacement function accept one or more parameters. If you do, the first parameter will be set to the text matched by the regular expression. If your regular expression has capturing groups, the second parameter will hold the text matched by the first capturing group, the third parameter gives you the text of the second capturing group, and so on
+- Ruby
+  - Inside the block, place an expression that evaluates to the string that you want to use as the replacement text. You can use the special regex match variables, such as $~, $&, and $1, inside the block
+
+### 3.17. Replace All Matches Within the Matches of Another Regex
+
+- You want to replace all the matches of a particular regular expression, but only within certain sections of the subject string. Another regular expression matches each of the sections in the string.
+- Say you have an HTML file in which various passages are marked as bold with <b> tags. Between each pair of bold tags, you want to replace all matches of the regular expression ‹before› with the replacement text ‹after›. For example, when processing the string before <b>first before</b> before <b>before before</b>, you want to end up with: before <b>first after</b> before <b>after after</b>.
+- JavaScript
+```js
+var result = subject.replace(/<b>.*?<\/b>/g, function(match) {
+    return match.replace(/before/g, "after");
+});
+```
+- Ruby
+```rb
+innerre = /before/
+result = subject.gsub(/<b>.*?<\/b>/) {|match|
+    match.gsub(innerre, 'after')
+}
+```
+- Recipe 3.16 explains how you can run a search-and-replace and build the replacement text for each regex match in your own code. Here, we do this with the outer regular expression. Each time it finds a pair of opening and closing <b> tags, we run a search-and-replace using the inner regex, just as we do in Recipe 3.14. The subject string for the search-and-replace with the inner regex is the text matched by the outer regex.
+
+### 3.18. Replace All Matches Between the Matches of Another Regex
+
+- You want to replace all the matches of a particular regular expression, but only within certain sections of the subject string. Another regular expression matches the text between the sections. In other words, you want to search and replace through all parts of the subject string not matched by the other regular expression.
+- Say you have an HTML file in which you want to replace straight double quotes with smart (curly) double quotes, but you only want to replace the quotes outside of HTML tags. Quotes within HTML tags must remain plain ASCII straight quotes, or your web browser won’t be able to parse the HTML anymore. For example, you want to turn `"text" <span class="middle">"text"</span> "text"` into `“text” <span class="middle">“text”</span> “text”`.
+- JavaScript
+```js
+var result = "";
+var outerRegex = /<[^<>]*>/g;
+var innerRegex = /"([^"]*)"/g;
+var outerMatch = null;
+var lastIndex = 0;
+while (outerMatch = outerRegex.exec(subject)) {
+    if (outerMatch.index == outerRegex.lastIndex) outerRegex.lastIndex++;
+    // Search and replace through the text between this match,
+    // and the previous one
+    var textBetween = subject.slice(lastIndex, outerMatch.index);
+    result += textBetween.replace(innerRegex, "\u201C$1\u201D");
+    lastIndex = outerMatch.index + outerMatch[0].length;
+    // Append the regex match itself unchanged
+    result += outerMatch[0];
+}
+// Search and replace through the remainder after the last regex match
+var textAfter = subject.slice(lastIndex);
+result += textAfter.replace(innerRegex, "\u201C$1\u201D");
+```
+- Ruby
+```rb
+result = '';
+textafter = ''
+subject.scan(/<[^<>]*>/) {|match|
+    textafter = $'
+    textbetween = $`.gsub(/"([^"]*)"/, '“\1”')
+    result += textbetween + match
+}
+result += textafter.gsub(/"([^"]*)"/, '“\1”')
+```
+- Recipe3.13 explains how to use two regular expressions to find matches (of the second regex) only within certain sections of the file (matches of the first regex). The solution for this recipe uses the same technique to search and replace through only certain parts of the subject string.
+
+### 3.19. Split a String
+
+- You want to split a string using a regular expression. After the split, you will have an array or list of strings with the text between the regular expression matches.
+- For example, you want to split a string with HTML tags in it along the HTML tags. Splitting `I●like●<b>bold</b>●and●<i>italic</i>●fonts` should result in an array of five strings: `I●like●, bold, ●and●, italic, and ●fonts`.
+- JavaScript
+  - `result = subject.split(/<[^<>]*>/);`
+- Ruby
+  - `result = subject.split(/<[^<>]*>/)`
+- Splitting a string using a regular expression essentially produces the opposite result of Recipe 3.10. Instead of retrieving a list with all the regex matches, you get a list of the text between the matches, including the text before the first and after the last match. The regex matches themselves are omitted from the output of the split function.
+- JavaScript
+  - In JavaScript, call the split() method on the string you want to split. Pass the regular expression as the only parameter to get an array with the string split as many times as possible.
+  - If you omit the second parameter or pass a negative number, the string is split as many times as possible. Setting the /g flag for the regex (Recipe 3.4) makes no difference.
+- Ruby
+  - Call the split() method on the subject string and pass your regular expression as the first parameter to divide the string into an array of strings along the regex matches.
+
+### 3.20. Split a String, Keeping the Regex Matches
+
+- You want to split a string using a regular expression. After the split, you will have an array or list of strings with the text between the regular expression matches, as well as the regex matches themselves.
+- Suppose you want to split a string with HTML tags in it along the HTML tags, and also keep the HTML tags. Splitting `I●like●<b>bold</b>●and●<i>italic</i>●fonts` should result in an array of nine strings: `I●like●, <b>, bold, </b>, ●and●, <i>, italic, </i>, and ●fonts`.
+- JavaScript
+  - `result = subject.split(/(<[^<>]*>)/);`
+- Ruby
+```rb
+list = []
+lastindex = 0;
+subject.scan(/<[^<>]*>/) {|match|
+    list << subject[lastindex..$~.begin(0)-1];
+    list << $&
+    lastindex = $~.end(0)
+}
+list << subject[lastindex..subject.length()]
+```
+- JavaScript
+  - JavaScript’s string.split() function does not provide an option to control whether regex matches should be added to the array. According to the JavaScript standard, all capturing groups should have their matches added to the array.
+- Ruby
+  - Ruby’s String.split() method does not provide the option to add the regex matches to the resulting array. Instead, we can adapt Recipe3.11 to add the text between the regex matches along with the regex matches themselves to a list. To get the text between the matches, we use the match details explained in Recipe3.8.
+
+### 3.21. Search Line by Line
+
+- Traditional grep tools apply your regular expression to one line of text at a time, and display the lines matched (or not matched) by the regular expression. You have an array of strings, or a multiline string, that you want to process in this way.
+- JavaScript
+```js
+var lines = subject.split(/\r?\n/);
+var regexp = /regex pattern/;
+for (var i = 0; i < lines.length; i++) {
+    if (lines[i].match(regexp)) {
+        // The regex matches lines[i]
+    } else {
+        // The regex does not match lines[i]
+    }
+}
+```
+- Ruby
+```rb
+lines = subject.split(/\r?\n/)
+re = /regex pattern/
+lines.each { |line|
+    if line =~ re
+        # The regex matches line
+    else
+        # The regex does not match line
+}
+```
+- When working with line-based data, you can save yourself a lot of trouble if you split the data into an array of lines, instead of trying to work with one long string with embedded line breaks
+- Then, you can apply your actual regex to each string in the array, without worrying about matching more than one line. This approach also makes it easy to keep track of the relationship between lines
+- Processing a string line by line also makes it easy to negate a regular expression. Regular expressions don’t provide an easy way of saying “match a line that does not contain this or that word.” Only character classes can be easily negated. But if you’ve already split your string into lines, finding the lines that don’t contain a word becomes as easy as doing a literal text search in all the lines, and removing the ones in which the word can be found.
