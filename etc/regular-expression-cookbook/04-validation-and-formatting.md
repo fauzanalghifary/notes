@@ -441,4 +441,30 @@ $            # Assert position at the end of the string.
 
 ### 4.13. Validate ISBNs
 
-- 
+- You need to check the validity of an International Standard Book Number (ISBN), which can be in either the older ISBN-10 or the current ISBN-13 format. You want to allow a leading “ISBN” identifier, and ISBN parts can optionally be separated by hyphens or spaces. All of the following are examples of valid input:
+  - ISBN 978-0-596-52068-7
+  - ISBN-13: 978-0-596-52068-7
+  - 978 0 596 52068 7
+  - 9780596520687
+  - ISBN-10 0-596-52068-9
+  - 0-596-52068-9
+- You cannot validate an ISBN using a regex alone, because the last digit is computed using a checksum algorithm. The regular expressions in this section validate the format of an ISBN, whereas the subsequent code examples include a validity check for the final digit.
+- Regular expressions
+  - `^(?:ISBN(?:-10)?:?●)?(?=[0-9X]{10}$|(?=(?:[0-9]+[-●]){3})[-●0-9X]{13}$)[0-9]{1,5}[-●]?[0-9]+[-●]?[0-9]+[-●]?[0-9X]$`
+  - `^(?:ISBN(?:-13)?:?●)?(?=[0-9]{13}$|(?=(?:[0-9]+[-●]){4})[-●0-9]{17}$)97[89][-●]?[0-9]{1,5}[-●]?[0-9]+[-●]?[0-9]+[-●]?[0-9]$`
+  - `^(?:ISBN(?:-1[03])?:?●)?(?=[0-9X]{10}$|(?=(?:[0-9]+[-●]){3})[-●0-9X]{13}$|97[89][0-9]{10}$|(?=(?:[0-9]+[-●]){4})[-●0-9]{17}$)(?:97[89][-●]?)?[0-9]{1,5}[-●]?[0-9]+[-●]?[0-9]+[-●]?[0-9X]$`
+
+### 4.14. Validate ZIP Codes
+
+- You need to validate a ZIP code (U.S. postal code), allowing both the five-digit and nine-digit (called ZIP+4) formats. The regex should match 12345 and 12345-6789, but not 1234, 123456, 123456789, or 1234-56789.
+- `^[0-9]{5}(?:-[0-9]{4})?$`
+```markdown
+^           # Assert position at the beginning of the string.
+[0-9]{5}    # Match a digit, exactly five times.
+(?:         # Group but don't capture:
+  -         #   Match a literal "-".
+  [0-9]{4}  #   Match a digit, exactly four times.
+)           # End the noncapturing group.
+  ?         #   Make the group optional.
+$           # Assert position at the end of the string.
+```
