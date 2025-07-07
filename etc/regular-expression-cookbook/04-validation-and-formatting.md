@@ -468,3 +468,35 @@ $            # Assert position at the end of the string.
   ?         #   Make the group optional.
 $           # Assert position at the end of the string.
 ```
+
+### 4.15. Validate Canadian Postal Codes
+
+- You want to check whether a string is a Canadian postal code.
+- `^(?!.*[DFIOQU])[A-VXY][0-9][A-Z]●?[0-9][A-Z][0-9]$`
+- The negative lookahead at the beginning of this regular expression prevents D, F, I, O, Q, or U anywhere in the subject string. The ‹[A-VXY]› character class further prevents W or Z as the first character. Aside from those two exceptions, Canadian postal codes simply use an alternating sequence of six alphanumeric characters with an optional space in the middle. For example, the regex will match K1A 0B1, which is the postal code for Canada Post’s Ottawa headquarters.
+
+### 4.16. Validate U.K. Postcodes
+
+- You need a regular expression that matches a U.K. postcode.
+- `^[A-Z]{1,2}[0-9R][0-9A-Z]?●[0-9][ABD-HJLNP-UW-Z]{2}$`
+- If you need a regex that ticks all the boxes for the postcode rules at the expense of readability, here you go:
+  - `^(?:(?:[A-PR-UWYZ][0-9]{1,2}|[A-PR-UWYZ][A-HK-Y][0-9]{1,2}|[A-PR-UWYZ][0-9][A-HJKSTUW]|[A-PR-UWYZ][A-HK-Y][0-9][ABEHMNPRV-Y])●[0-9][ABD-HJLNP-UW-Z]{2}|GIR 0AA)$`
+  
+### 4.17. Find Addresses with Post Office Boxes
+
+- You want to catch addresses that contain a P.O. box, and warn users that their shipping information must contain a street address.
+- `^(?:Post(?:al)?●(?:Office●)?|P[.●]?O\.?●)?Box\b`
+```markdown
+^                # Assert position at the beginning of a line.
+(?:              # Group but don't capture:
+  Post(?:al)?\   #   Match "Post " or "Postal ".
+  (?:Office\ )?  #   Optionally match "Office ".
+ |               #  Or:
+  P[.\ ]?        #   Match "P" and an optional period or space character.
+  O\.?\          #   Match "O", an optional period, and a space character.
+)?               # Make the group optional.
+Box              # Match "Box".
+\b               # Assert position at a word boundary.
+```
+
+### 4.18. Reformat Names From “FirstName LastName” to “LastName, FirstName”
