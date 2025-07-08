@@ -500,3 +500,72 @@ Box              # Match "Box".
 ```
 
 ### 4.18. Reformat Names From “FirstName LastName” to “LastName, FirstName”
+
+- You want to convert people’s names from the “FirstName LastName” format to “LastName, FirstName” for use in an alphabetical listing. You additionally want to account for other name parts, so that you can, say convert “FirstName MiddleNames Particles LastName Suffix” to “LastName, FirstName MiddleNames Particles Suffix.”
+- Unfortunately, it isn’t possible to reliably parse names using a regular expression. Regular expressions are rigid, whereas names are so flexible that even humans get them wrong. Determining the structure of a name or how it should be listed alphabetically often requires taking traditional and national conventions, or even personal preferences, into account. Nevertheless, if you’re willing to make certain assumptions about your data and can handle a moderate level of error, a regular expression can provide a quick solution.
+- Regex: `^(.+?)●([^\s,]+)(,?●(?:[JS]r\.?|III?|IV))?$`
+- Replacement: `$2,●$1$3`
+```markdown
+^              # Assert position at the beginning of the string.
+(              # Capture the enclosed match to backreference 1:
+  .+?          #   Match one or more characters, as few times as possible.
+)              # End the capturing group.
+\              # Match a literal space character.
+(              # Capture the enclosed match to backreference 2:
+  [^\s,]+      #   Match one or more non-whitespace/comma characters.
+)              # End the capturing group.
+(              # Capture the enclosed match to backreference 3:
+  ,?\          #   Match ", " or " ".
+  (?:          #   Group but don't capture:
+    [JS]r\.?   #     Match "Jr", "Jr.", "Sr", or "Sr.".
+   |           #    Or:
+    III?       #     Match "II" or "III".
+   |           #    Or:
+    IV         #     Match "IV".
+  )            #   End the noncapturing group.
+)?             # Make the group optional.
+$              # Assert position at the end of the string.
+```
+
+### 4.19. Validate Password Complexity
+
+- You’re tasked with ensuring that any passwords chosen by your website users meet your organization’s minimum complexity requirements.
+- Length between 8 and 32 characters
+  - `^.{8,32}$` or `^[\s\S]{8,32}$`
+- ASCII visible and space characters only
+  - `^[\x20-\x7E]+$`
+- One or more uppercase letters
+  - `[A-Z]`
+- One or more lowercase letters
+  - `[a-z]`
+- One or more numbers
+  - `[0-9]`
+- One or more special characters
+  - `[●!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]` 
+- Disallow three or more sequential identical characters
+  - `(.)\1\1` or `([\s\S])\1\1`
+```js
+function validate(password) {
+    var minMaxLength = /^[\s\S]{8,32}$/,
+        upper = /[A-Z]/,
+        lower = /[a-z]/,
+        number = /[0-9]/,
+        special = /[ !"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/;
+
+    if (minMaxLength.test(password) &&
+        upper.test(password) &&
+        lower.test(password) &&
+        number.test(password) &&
+        special.test(password)
+    ) {
+        return true;
+    }
+
+    return false;
+}
+```
+- Limiting each regex to a specific rule brings the additional benefit of simplicity. As a result, all of the regexes shown thus far are fairly straightforward
+
+### 4.20. Validate Credit Card Numbers
+
+- 
