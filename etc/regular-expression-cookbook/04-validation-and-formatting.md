@@ -568,4 +568,26 @@ function validate(password) {
 
 ### 4.20. Validate Credit Card Numbers
 
+- You’re given the job of implementing an order form for a company that accepts payment by credit card. Since the credit card processor charges for each transaction attempt, including failed attempts, you want to use a regular expression to weed out obviously invalid credit card numbers.
+- Doing this will also improve the customer’s experience. A regular expression can instantly detect obvious typos as soon as the customer finishes filling in the field on the web form. A round trip to the credit card processor, by contrast, easily takes 10 to 30 seconds.
+- To keep the implementation simple, this solution is split into two parts. First we strip out spaces and hyphens. Then we validate what remains.
+- Strip spaces and hyphens
+  - `[●-]` replace with blank replacement text
+- Validate the number
+```markdown
+^(?:
+(?<visa>4[0-9]{12}(?:[0-9]{3})?) |
+(?<mastercard>5[1-5][0-9]{14}) |
+(?<discover>6(?:011|5[0-9]{2})[0-9]{12}) |
+(?<amex>3[47][0-9]{13}) |
+(?<diners>3(?:0[0-5]|[68][0-9])[0-9]{11}) |
+(?<jcb>(?:2131|1800|35[0-9]{3})[0-9]{11})
+)$
+```
+```js
+^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$
+```
+
+### 4.21. European VAT Numbers
+
 - 
