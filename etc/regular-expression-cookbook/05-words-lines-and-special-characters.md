@@ -68,3 +68,95 @@
   - When applied to the subject string categorically match any word except cat, the regex will find four matches: match, any, word, and except.
 
 ### 5.5. Find Any Word Not Followed by a Specific Word
+
+- You want to match any word that is not immediately followed by the word cat, ignoring any whitespace, punctuation, or other nonword characters that appear in between.
+- `\b\w+\b(?!\W+cat\b)`
+- As with many other recipes in this chapter, word boundaries (‹\b›) and the word character token (‹\w›) work together to match a complete word. You can find in-depth descriptions of these features in Recipe2.6.
+- Lookahead tells the regex engine to temporarily step forward in the string, to check whether the pattern inside the lookahead can be matched just ahead of the current position. It does not consume any of the characters matched inside the lookahead. Instead, it merely asserts whether a match is possible
+- As for the pattern inside the lookahead, the ‹\W+› matches one or more nonword characters, such as whitespace and punctuation, that appear before ‹cat›. The word boundary at the end of the lookahead ensures that we skip only words not followed by cat as a complete word, rather than just any word starting with cat.
+
+### 5.6. Find Any Word Not Preceded by a Specific Word
+
+- You want to match any word that is not immediately preceded by the word cat, ignoring any whitespace, punctuation, or other nonword characters that come between.
+- Lookbehind lets you check if text appears before a given position. It works by instructing the regex engine to temporarily step backward in the string, checking whether something can be found ending at the position where you placed the lookbehind.
+- `(?<!\bcat\W+)\b\w+`
+- `(?<!\bcat\W)\b\w+`
+- `(?<!\Wcat\W)(?<!^cat\W)\b\w+`
+
+### 5.7. Find Words Near Each Other
+
+- You want to emulate a NEAR search using a regular expression. For readers unfamiliar with the term, some search tools that use Boolean operators such as NOT and OR also have a special operator called NEAR. Searching for “word1 NEAR word2” finds word1 and word2 in any order, as long as they occur within a certain distance of each other.
+- If you’re searching for just two different words, you can combine two regular expressions—one that matches word1 before word2, and another that flips the order of the words
+- `\b(?:word1\W+(?:\w+\W+){0,5}?word2|word2\W+(?:\w+\W+){0,5}?word1)\b`
+```markdown
+\b(?:
+  word1                 # first term
+  \W+ (?:\w+\W+){0,5}?  # up to five words
+  word2                 # second term
+|                       #   or, the same pattern in reverse:
+  word2                 # second term
+  \W+ (?:\w+\W+){0,5}?  # up to five words
+  word1                 # first term
+)\b
+```
+- The first subpattern matches word1, followed by between zero and five words, and then word2. The second subpattern matches the same thing, with the order of word1 and word2 reversed.
+
+### 5.8. Find Repeated Words
+
+- You’re editing a document and would like to check it for any incorrectly repeated words. You want to find these doubled words despite capitalization differences, such as with “The the.” You also want to allow differing amounts of whitespace between words, even if this causes the words to extend across more than one line. Any separating punctuation, however, should cause the words to no longer be treated as if they are repeating.
+- `\b([A-Z]+)\s+\1\b`
+- There are two things needed to match something that was previously matched: a capturing group and a backreference
+- Place the thing you want to match more than once inside a capturing group, and then match it again using a backreference.
+- Finally, the word boundaries at the beginning and end of the regular expression ensure that it doesn’t match within other words ( e.g., with “this thistle”).
+
+### 5.9. Remove Duplicate Lines
+
+- You have a log file, database query output, or some other type of file or string with duplicate lines. You need to remove all but one of each duplicate line using a text editor or other similar tool.
+- When you’re programming, options two and three should be avoided since they are inefficient compared to other available approaches, such as using a hash object to keep track of unique lines. However, the first option (which requires that you sort the lines in advance, unless you only want to remove adjacent duplicates) may be an acceptable approach since it’s quick and easy.
+- Option 1: Sort lines and remove adjacent duplicates
+  - After sorting the lines, use the following regex and replacement string to get rid of the duplicates:
+  - `^(.*)(?:(?:\r?\n|\r)\1)+$`
+  - Replace with: `$1`
+- Option 2: Keep the last occurrence of each duplicate line in an unsorted file
+  - `^([^\r\n]*)(?:\r?\n|\r)(?=.*^\1$)`
+  - `^(.*)(?:\r?\n|\r)(?=[\s\S]*^\1$)`
+- Option 3: Keep the first occurrence of each duplicate line in an unsorted file
+  - `^([^\r\n]*)$(.*?)(?:(?:\r?\n|\r)\1$)+`
+
+### 5.10. Match Complete Lines That Contain a Word
+
+- You want to match all lines that contain the word error anywhere within them.
+- `^.*\berror\b.*$`
+- To expand the regex to match a complete line, add ‹.*› at both ends. The dot-asterisk sequences match zero or more characters within the current line. The asterisk quantifiers are greedy, so they will match as much text as possible. The first dot-asterisk matches until the last occurrence of “error” on the line, and the second dot-asterisk matches any non-line-break characters that occur after it.
+- Finally, place caret and dollar sign anchors at the beginning and end of the regular expression, respectively, to ensure that matches contain a complete line. Strictly speaking, the dollar sign anchor at the end is redundant since the dot and greedy asterisk will always match until the end of the line. However, it doesn’t hurt to add it, and makes the regular expression a little more self-explanatory.
+- Remember that the three key metacharacters used to restrict matches to a single line (the ‹^› and ‹$› anchors, and the dot) do not have fixed meanings. To make them all line-oriented, you have to enable the option to let ^ and $ match at line breaks, and make sure that the option to let the dot match line breaks is not enabled. Recipe3.4 shows how to apply these options in code. If you’re using JavaScript or Ruby, there is one less option to worry about, because JavaScript does not have an option to let dot match line breaks, and Ruby’s caret and dollar sign anchors always match at line breaks.
+
+### 5.11. Match Complete Lines That Do Not Contain a Word
+
+- You want to match complete lines that do not contain the word error.
+- `^(?:(?!\berror\b).)*$`
+- In order to match a line that does not contain something, use negative lookahead
+- Notice that in this regular expression, a negative lookahead and a dot are repeated together using a noncapturing group. This is necessary to ensure that the regex ‹\berror\b› fails at every position in the line.
+- Testing a negative lookahead against every position in a line or string is rather inefficient. This solution is intended to be used in situations where one regular expression is all that can be used, such as when using an application that can’t be programmed. When programming, it is more efficient to search through text line by line
+
+### 5.12. Trim Leading and Trailing Whitespace
+
+- You want to remove leading and trailing whitespace from a string. For instance, you might need to do this to clean up data submitted by users
+- To keep things simple and fast, the best all-around solution is to use two substitutions—one to remove leading whitespace, and another to remove trailing whitespace.
+  - Leading whitespace: `^\s+`
+  - Trailing whitespace: `\s+$`
+- Simply replace matches found using one of the “leading whitespace” regexes and one of the “trailing whitespace” regexes with the empty string
+
+### 5.13. Replace Repeated Whitespace with a Single Space
+
+- As part of a cleanup routine for user input or other data, you want to replace repeated whitespace characters with a single space. Any tabs, line breaks, or other whitespace should also be replaced with a space.
+- Clean any whitespace characters
+  - `\s+`
+- Clean horizontal whitespace characters
+  - `[●\t\xA0]+`
+
+### 5.14. Escape Regular Expression Metacharacters
+
+- You want to use a literal string provided by a user or from some other source as part of a regular expression. However, you want to escape all regular expression metacharacters within the string before embedding it in your regex, to avoid any unintended consequences.
+- By adding a backslash before any characters that potentially have special meaning within a regular expression, you can safely use the resulting pattern to match a literal sequence of characters. Of the programming languages covered by this book, all except JavaScript have a built-in function or method to perform this task (listed in Table5-3). However, for the sake of completeness, we’ll show how to pull this off using your own regex, even in the languages that have a ready-made solution.
+- `[[\]{}()*+?.\\|^$\-,&#\s]`
