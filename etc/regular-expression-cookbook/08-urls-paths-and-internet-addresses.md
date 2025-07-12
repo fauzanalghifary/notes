@@ -253,3 +253,198 @@
 - If you don’t already know that your subject text is a valid URL, you can use one of the regexes from Recipe8.7. The first regex in that recipe captures the fragment, if one is present in the URL, into capturing group number 13.
 
 ### 8.15. Validating Domain Names
+
+- You want to check whether a string looks like it may be a valid, fully qualified domain name, or find such domain names in longer text.
+- Check whether a string looks like a valid domain name:
+  - `^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$`
+- Find valid domain names in longer text:
+  - `\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`
+- Check whether each part of the domain is not longer than 63 characters:
+  - `\b((?=[a-z0-9-]{1,63}\.)[a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,63}\b`
+- Allow internationalized domain names using the punycode notation:
+  - `\b((xn--)?[a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`
+- Check whether each part of the domain is not longer than 63 characters, and allow internationalized domain names using the punycode notation:
+  - `\b((?=[a-z0-9-]{1,63}\.)(xn--)?[a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,63}\b`
+- A domain name has the form of domain.tld, or subdomain.domain.tld, or any number of additional subdomains. The top-level domain (tld) consists of two or more letters. That’s the easiest part of the regex: ‹[a-z]{2,}›.
+- The domain, and any subdomains, consist of letters, digits, and hyphens. Hyphens cannot appear in pairs, and cannot appear as the first or last character in the domain. We handle this with the regular expression ‹[a-z0-9]+(-[a-z0-9]+)*›. This regex allows any number of letters and digits, optionally followed by any number of groups that consist of a hyphen followed by another sequence of letters and digits. Remember that the hyphen is a metacharacter inside character classes (Recipe 2.3) but an ordinary character outside of character classes, so we don’t need to escape any hyphens in this regex.
+- The domain and the subdomains are delimited with a literal dot, which we match with ‹\.› in a regular expression. Since we can have any number of subdomains in addition to the domain, we place the domain name part of the regex and the literal dot in a group that we repeat: ‹([a-z0-9]+(-[a-z0-9]+)*\.)+›. Since the subdomains follow the same syntax as the domain, this one group handles both.
+- Our first set of regular expressions doesn’t check whether each part of the domain is no longer than 63 characters.
+- What we can do is to use lookahead to match the same text twice. Review Recipe 2.16 first if you’re not familiar with lookahead. We use the same regex ‹[a-z0-9]+(-[a-z0-9]+)*\.› to match a domain name with valid hyphens, and add ‹[-a-z0-9]{1,63}\.› inside a lookahead to check that its length is also 63 characters or less. The result is ‹(?=[-a-z0-9]{1,63}\.)[a-z0-9]+(-[a-z0-9]+)*\.›.
+- The lookahead ‹(?=[-a-z0-9]{1,63}\.)› first checks that there are 1 to 63 letters, digits, and hyphens until the next dot. It’s important to include the dot in the lookahead. Without it, domains longer than 63 characters would still satisfy the lookahead’s requirement for 63 characters. Only by putting the literal dot inside the lookahead do we enforce the requirement that we want at most 63 characters.
+
+### 8.16. Matching IPv4 Addresses
+
+- You want to check whether a certain string represents a valid IPv4 address in 255.255.255.255 notation. Optionally, you want to convert this address into a 32-bit integer.
+- Simple regex to check for an IP address:
+  - `^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`
+- Accurate regex to check for an IP address, allowing leading zeros:
+  - `^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+- Accurate regex to check for an IP address, disallowing leading zeros:
+  - `^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$`
+- Simple regex to extract IP addresses from longer text:
+  - `\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b`
+- Accurate regex to extract IP addresses from longer text, allowing leading zeros:
+  - `\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b`
+- Accurate regex to extract IP addresses from longer text, dis25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]allowing leading zeros:
+  - `\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b`
+- Simple regex that captures the four parts of the IP address:
+  - `^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$`
+- Accurate regex that captures the four parts of the IP address, allowing leading zeros:
+  - `^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.↵
+(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.↵
+(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.↵
+(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+- Accurate regex that captures the four parts of the IP address, disallowing leading zeros:
+  - `^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.↵
+(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.↵
+(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.↵
+(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$`
+- A version 4 IP address is usually written in the form 255.255.255.255, where each of the four numbers must be between 0 and 255. Matching such IP addresses with a regular expression is very straightforward.
+- In the solution, we present four regular expressions. Two of them are billed as “simple,” while the other two are marked “accurate.”
+
+### 8.17. Matching IPv6 Addresses
+
+- You want to check whether a string represents a valid IPv6 address using the standard, compact, and/or mixed notations.
+
+Standard notation
+- Match an IPv6 address in standard notation, which consists of eight 16-bit words using hexadecimal notation, delimited by colons (e.g.: 1762:0:0:0:0:B03:1:AF18). Leading zeros are optional.
+- Check whether the whole subject text is an IPv6 address using standard notation:
+  - `^(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}$`
+- Find an IPv6 address using standard notation within a larger collection of text:
+  - `(?<![:.\w])(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}(?![:.\w])`
+
+Mixed notation
+- Match an IPv6 address in mixed notation, which consists of six 16-bit words using hexadecimal notation, followed by four bytes using decimal notation. The words are delimited with colons, and the bytes with dots. A colon separates the words from the bytes. Leading zeros are optional for both the hexadecimal words and the decimal bytes. This notation is used in situations where IPv4 and IPv6 are mixed, and the IPv6 addresses are extensions of the IPv4 addresses. 1762:0:0:0:0:B03:127.32.67.15 is an example of an IPv6 address in mixed notation.
+- Check whether the whole subject text is an IPv6 address using mixed notation:
+  - `^(?:[A-F0-9]{1,4}:){6}(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$`
+- Find IPv6 address using mixed notation within a larger collection of text:
+  - `(?<![:.\w])(?:[A-F0-9]{1,4}:){6}↵
+(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}↵
+(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(?![:.\w])`
+
+Standard or mixed notation
+- Check whether the whole subject text is an IPv6 address using standard or mixed notation:
+  - `^(?:[A-F0-9]{1,4}:){6}(?:[A-F0-9]{1,4}:[A-F0-9]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))$`
+- Find IPv6 address using standard or mixed notation within a larger collection of text:
+```markdown
+(?<![:.\w])                                              # Anchor address
+(?:[A-F0-9]{1,4}:){6}                                        # 6 words
+(?:[A-F0-9]{1,4}:[A-F0-9]{1,4}                               # 2 words
+|  (?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}  # or 4 bytes
+   (?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])
+)(?![:.\w])    
+```
+
+Compressed notation
+Compressed mixed notation
+Standard, mixed, or compressed notation
+
+### 8.18. Validate Windows Paths
+
+- You want to check whether a string looks like a valid path to a folder or file on the Microsoft Windows operating system.
+- Drive letter paths
+```markdown
+\A
+[a-z]:\\                    # Drive
+(?:[^\\/:*?"<>|\r\n]+\\)*   # Folder
+[^\\/:*?"<>|\r\n]*          # File
+\Z
+```
+- Drive letter and UNC paths
+```markdown
+\A
+(?:[a-z]:|\\\\[a-z0-9_.$\●-]+\\[a-z0-9_.$\●-]+)\\  # Drive
+(?:[^\\/:*?"<>|\r\n]+\\)*                          # Folder
+[^\\/:*?"<>|\r\n]*                                 # File
+\Z
+```
+- Drive letter, UNC, and relative paths
+```markdown
+\A
+(?:(?:[a-z]:|\\\\[a-z0-9_.$\●-]+\\[a-z0-9_.$\●-]+)\\|  # Drive
+   \\?[^\\/:*?"<>|\r\n]+\\?)                           # Relative path
+(?:[^\\/:*?"<>|\r\n]+\\)*                              # Folder
+[^\\/:*?"<>|\r\n]*                                     # File
+\Z
+```
+- Matching a full path to a file or folder on a drive that has a drive letter is very straightforward. The drive is indicated with a single letter, followed by a colon and a backslash. We easily match this with ‹[a-z]:\\›. The backslash is a metacharacter in regular expressions, and so we need to escape it with another backslash to match it literally.
+- Folder and filenames on Windows can contain all characters, except these: \/:*?"<>|. Line breaks aren’t allowed either. We can easily match a sequence of all characters except these with the negated character class ‹[^\\/:*?"<>|\r\n]+›. The backslash is a metacharacter in character classes too, so we escape it. ‹\r› and ‹\n› are the two line break characters
+- Folders are delimited with backslashes. We can match a sequence of zero or more folders with ‹(?:[^\\/:*?"<>|\r\n]+\\)*›, which puts the regex for the folder name and a literal backslash inside a noncapturing group (Recipe2.9) that is repeated zero or more times with the asterisk (Recipe2.12).
+- To match the filename, we use ‹[^\\/:*?"<>|\r\n]*›. The asterisk makes the filename optional, to allow paths that end with a backslash. If you don’t want to allow paths that end with a backslash, change the last ‹*› in the regex into a ‹+›.
+
+### 8.19.Split Windows Paths into Their Parts
+
+- You want to check whether a string looks like a valid path to a folder or file on the Microsoft Windows operating system. If the string turns out to hold a valid Windows path, then you also want to extract the drive, folder, and filename parts of the path separately.
+- Drive letter paths
+```markdown
+\A
+(?<drive>[a-z]:)\\
+(?<folder>(?:[^\\/:*?"<>|\r\n]+\\)*)
+(?<file>[^\\/:*?"<>|\r\n]*)
+\Z
+```
+- Drive letter and UNC paths
+```markdown
+\A
+(?<drive>[a-z]:|\\\\[a-z0-9_.$●-]+\\[a-z0-9_.$●-]+)\\
+(?<folder>(?:[^\\/:*?"<>|\r\n]+\\)*)
+(?<file>[^\\/:*?"<>|\r\n]*)
+\Z
+```
+- Drive letter, UNC, and relative paths
+```markdown
+\A
+(?<drive>[a-z]:\\|\\\\[a-z0-9_.$●-]+\\[a-z0-9_.$●-]+\\|\\?)
+(?<folder>(?:[^\\/:*?"<>|\r\n]+\\)*)
+(?<file>[^\\/:*?"<>|\r\n]*)
+\Z
+```
+- The regular expressions in this recipe are very similar to the ones in the previous recipe. This discussion assumes you’ve already read and understood the discussion of the previous recipe.
+- We’ve made only one change to the regular expressions for drive letter paths, compared to the ones in the previous recipe. We’ve added three capturing groups that you can use to retrieve the various parts of the path: ‹drive›, ‹folder›, and ‹file›. You can use these names if your regex flavor supports named capture (Recipe2.11). If not, you’ll have to reference the capturing groups by their numbers: 1, 2, and 3.
+
+### 8.20. Extract the Drive Letter from a Windows Path
+
+- You have a string that holds a (syntactically) valid path to a file or folder on a Windows PC or network. You want to extract the drive letter, if any, from the path. For example, you want to extract c from c:\folder\file.ext.
+- `^([a-z]):`
+- Extracting the drive letter from a string known to hold a valid path is trivial, even if you don’t know whether the path actually starts with a drive letter. The path could be a relative path or a UNC path.
+- Colons are invalid characters in Windows paths, except to delimit the drive letter. Thus, if we have a letter followed by a colon at the start of the string, we know the letter is the drive letter.
+
+### 8.21. Extract the Server and Share from a UNC Path
+
+- You have a string that holds a (syntactically) valid path to a file or folder on a Windows PC or network. If the path is a UNC path, then you want to extract the name of the network server and the share on the server that the path points to. For example, you want to extract server and share from \\server\share\folder\file.ext.
+- `^\\\\([a-z0-9_.$●-]+)\\([a-z0-9_.$●-]+)`
+- UNC paths begin with two backslashes. Two consecutive backslashes are not allowed in Windows paths, except to begin a UNC path. Thus, if a known valid path begins with two backslashes, we know that the server and share name must follow.
+
+### 8.22. Extract the Folder from a Windows Path
+
+- You have a string that holds a (syntactically) valid path to a file or folder on a Windows PC or network, and you want to extract the folder from the path. For example, you want to extract \folder\subfolder\ from c:\folder\subfolder\file.ext or \\server\share\folder\subfolder\file.ext.
+- `^([a-z]:|\\\\[a-z0-9_.$●-]+\\[a-z0-9_.$●-]+)?((?:\\|^)(?:[^\\/:*?"<>|\r\n]+\\)+)`
+- Extracting the folder from a Windows path is a bit tricky if we want to support UNC paths, because we can’t just grab the part of the path between backslashes. If we did, we’d be grabbing the server and share from UNC paths too.
+- The first part of the regex, ‹^([a-z]:|\\\\[a-z0-9_.$●-]+\\[a-z0-9_.$●-]+)?›, skips over the drive letter or the network server and network share names at the start of the path.
+- The question mark after the group makes it optional. This allows us to support relative paths, which don’t have a drive letter or network share.
+- The folders are easily matched with ‹(?:[^\\/:*?"<>|\r\n]+\\)+›. The character class matches a folder name. The noncapturing group matches a folder name followed by a literal backslash that delimits the folders from each other and from the filename. We repeat this group one or more times. This means our regular expression will match only those paths that actually specify a folder. Paths that specify only a filename, drive, or network share won’t be matched.
+
+### 8.23. Extract the Filename from a Windows Path
+
+- You have a string that holds a (syntactically) valid path to a file or folder on a Windows PC or network, and you want to extract the filename, if any, from the path. For example, you want to extract file.ext from c:\folder\file.ext.
+- `[^\\/:*?"<>|\r\n]+$`
+- The filename always occurs at the end of the string. It can’t contain any colons or backslashes, so it cannot be confused with folders, drive letters, or network shares, which all use backslashes and/or colons.
+- The negated character class ‹[^\\/:*?"<>|\r\n]+› (Recipe 2.3) matches the characters that can occur in filenames. Though the regex engine scans the string from left to right, the anchor at the end of the regex makes sure that only the last run of filename characters in the string will be matched, giving us our filename.
+
+### 8.24. Extract the File Extension from a Windows Path
+
+- You have a string that holds a (syntactically) valid path to a file or folder on a Windows PC or network, and you want to extract the file extension, if any, from the path. For example, you want to extract .ext from c:\folder\file.ext.
+- `\.[^.\\/:*?"<>|\r\n]+$`
+- We can use the same technique for extracting the file extension as we used for extracting the whole filename in Recipe 8.23. 
+- The only difference is in how we handle dots. The regex in Recipe 8.23 does not include any dots. The negated character class in that regex will simply match any dots that happen to be in the filename.
+- A file extension must begin with a dot. Thus, we add ‹\.› to match a literal dot at the start of the regex.
+
+### 8.25. Strip Invalid Characters from Filenames
+
+- You want to strip a string of characters that aren’t valid in Windows filenames. For example, you have a string with the title of a document that you want to use as the default filename when the user clicks the Save button the first time.
+- Regex: `[\\/:"*?<>|]+`
+- Replacement: ``
+- The characters \/:"*?<>| are not valid in Windows filenames. These characters are used to delimit drives and folders, to quote paths, or to specify wildcards and redirection on the command line.
+- We can easily match those characters with the character class ‹[\\/:"*?<>|]›. The backslash is a metacharacter inside character classes, so we need to escape it with another backslash. All the other characters are always literal characters inside character classes.
+- We repeat the character class with a ‹+› for efficiency. This way, if the string contains a sequence of invalid characters, the whole sequence will be deleted at once, rather than character by character. You won’t notice the performance difference when dealing with very short strings, such as filenames, but it is a good technique to keep in mind when you’re dealing with larger sets of data that are more likely to have longer runs of characters that you want to delete.
+
