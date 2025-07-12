@@ -360,5 +360,4 @@ subject = subject.replace(
 >
 ```
 - <div> tags that contain an id attribute
-  - `<div\s(?:[^>"']|"[^"]*"|'[^']*')*?\bid\s*=\s*("[^"]*"|'[^']*')(?:[^>"']|"[^"]*"|'[^']*')*>`
   
