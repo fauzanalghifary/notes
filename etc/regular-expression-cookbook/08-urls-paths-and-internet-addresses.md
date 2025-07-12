@@ -114,4 +114,142 @@
 
 ### 8.8. Extracting the Scheme from a URL
 
+- You want to extract the URL scheme from a string that holds a URL. For example, you want to extract http from http://www.regexcookbook.com.
+- Extract the scheme from a URL known to be valid
+  - `^([a-z][a-z0-9+\-.]*):`
+- Extract the scheme while validating the URL
+```markdown
+\A
+([a-z][a-z0-9+\-.]*):
+(# Authority & path
+ //
+ ([a-z0-9\-._~%!$&'()*+,;=]+@)?              # User
+ ([a-z0-9\-._~%]+                            # Named host
+ |\[[a-f0-9:.]+\]                            # IPv6 host
+ |\[v[a-f0-9][a-z0-9\-._~%!$&'()*+,;=:]+\])  # IPvFuture host
+ (:[0-9]+)?                                  # Port
+ (/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?          # Path
+|# Path without authority
+ (/?[a-z0-9\-._~%!$&'()*+,;=:@]+(/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?)?
+)
+# Query
+(\?[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?
+# Fragment
+(\#[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?
+\Z
+```
+- Extracting the scheme from a URL is easy if you already know that your subject text is a valid URL. A URL’s scheme always occurs at the very start of the URL. The caret (Recipe2.5) specifies that requirement in the regex. The scheme begins with a letter, which can be followed by additional letters, digits, plus signs, hyphens, and dots. We match this with the two character classes ‹[a-z][a-z0-9+\-.]*› (Recipe2.3).
 
+### 8.9. Extracting the User from a URL
+
+- You want to extract the user from a string that holds a URL. For example, you want to extract jan from ftp://jan@www.regexcookbook.com.
+- Extract the user from a URL known to be valid
+  - `^[a-z0-9+\-.]+://([a-z0-9\-._~%!$&'()*+,;=]+)@`
+- Extract the user while validating the URL
+```markdown
+\A
+[a-z][a-z0-9+\-.]*://                       # Scheme
+([a-z0-9\-._~%!$&'()*+,;=]+)@               # User
+([a-z0-9\-._~%]+                            # Named host
+|\[[a-f0-9:.]+\]                            # IPv6 host
+|\[v[a-f0-9][a-z0-9\-._~%!$&'()*+,;=:]+\])  # IPvFuture host
+(:[0-9]+)?                                  # Port
+(/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?          # Path
+(\?[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?         # Query
+(\#[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?         # Fragment
+\Z
+```
+- The username, if present in the URL, occurs right after the scheme and the two forward slashes that begin the “authority” part of the URL. The username is separated from the hostname that follows it with an @ sign. Since @ signs are not valid in hostnames, we can be sure that we’re extracting the username portion of a URL if we find an @ sign after the two forward slashes and before the next forward slash in the URL. Forward slashes are not valid in usernames, so we don’t need to do any special checking for them.
+- All these rules mean we can very easily extract the username if we know the URL to be valid. We just skip over the scheme with ‹[a-z0-9+\-.]+› and the ://. Then, we grab the username that follows. If we can match the @ sign, we know that the characters before it are the username. The character class ‹[a-z0-9\-._~%!$&'()*+,;=]› lists all the characters that are valid in usernames.
+- If you don’t already know that your subject text is a valid URL, you can use a simplified version of the regex from Recipe 8.7. Since we want to extract the user, we can exclude URLs that don’t specify an authority. The regex in the solution actually matches only URLs that specify an authority that includes a username.
+
+### 8.10. Extracting the Host from a URL
+
+- You want to extract the host from a string that holds a URL. For example, you want to extract www.regexcookbook.com from http://www.regexcookbook.com/.
+- Extract the host from a URL known to be valid
+```markdown
+\A
+[a-z][a-z0-9+\-.]*://               # Scheme
+([a-z0-9\-._~%!$&'()*+,;=]+@)?      # User
+([a-z0-9\-._~%]+                    # Named or IPv4 host
+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])   # IPv6+ host
+```
+- Extract the host while validating the URL
+```markdown
+\A
+[a-z][a-z0-9+\-.]*://                       # Scheme
+([a-z0-9\-._~%!$&'()*+,;=]+@)?              # User
+([a-z0-9\-._~%]+                            # Named host
+|\[[a-f0-9:.]+\]                            # IPv6 host
+|\[v[a-f0-9][a-z0-9\-._~%!$&'()*+,;=:]+\])  # IPvFuture host
+(:[0-9]+)?                                  # Port
+(/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?          # Path
+(\?[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?         # Query
+(\#[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?         # Fragment
+\Z
+```
+- Extracting the host from a URL is easy if you already know that your subject text is a valid URL. We use ‹\A› or ‹^› to anchor the match to the start of the string. ‹[a-z][a-z0-9+\-.]*://› skips over the scheme, and ‹([a-z0-9\-._~%!$&'()*+,;=]+@)?› skips over the optional user. The hostname follows right after that.
+- RFC 3986 allows two different notations for the host. Domain names and IPv4 addresses are specified without square brackets, whereas IPv6 and future IP addresses are specified with square brackets. We need to handle those separately because the notation with square brackets allows more punctuation than the notation without. In particular, the colon is allowed between square brackets, but not in domain names or IPv4 addresses. The colon is also used to delimit the hostname (with or without square brackets) from the port number.
+- If you don’t already know that your subject text is a valid URL, you can use a simplified version of the regex from Recipe 8.7. Since we want to extract the host, we can exclude URLs that don’t specify an authority. This makes the regular expression quite a bit simpler.
+
+### 8.11. Extracting the Port from a URL
+
+- You want to extract the port number from a string that holds a URL. For example, you want to extract 80 from http://www.regexcookbook.com:80/.
+- Extract the port from a URL known to be valid
+```markdown
+\A
+[a-z][a-z0-9+\-.]*://               # Scheme
+([a-z0-9\-._~%!$&'()*+,;=]+@)?      # User
+([a-z0-9\-._~%]+                    # Named or IPv4 host
+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])   # IPv6+ host
+:(?<port>[0-9]+)                    # Port number
+```
+- Extract the port while validating the URL
+```markdown
+\A
+[a-z][a-z0-9+\-.]*://                       # Scheme
+([a-z0-9\-._~%!$&'()*+,;=]+@)?              # User
+([a-z0-9\-._~%]+                            # Named host
+|\[[a-f0-9:.]+\]                            # IPv6 host
+|\[v[a-f0-9][a-z0-9\-._~%!$&'()*+,;=:]+\])  # IPvFuture host
+:([0-9]+)                                   # Port
+(/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?          # Path
+(\?[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?         # Query
+(\#[a-z0-9\-._~%!$&'()*+,;=:@/?]*)?         # Fragment
+\Z
+```
+- The port number is separated from the hostname with a colon, which we add as a literal character to the regular expression. The port number itself is simply a string of digits, easily matched with ‹[0-9]+›.
+
+### 8.12. Extracting the Path from a URL
+
+- You want to extract the path from a string that holds a URL. For example, you want to extract `/index.html` from http://www.regexcookbook.com/index.html or from /index.html#fragment.
+- Extract the path from a string known to hold a valid URL. The following finds a match for all URLs, even for URLs that have no path:
+  - `^([a-z][a-z0-9+\-.]*:(//[^/?#]+)?)?([a-z0-9\-._~%!$&'()*+,;=:@/]*)`
+- Extract the path from a string known to hold a valid URL. Only match URLs that actually have a path:
+  - `^([a-z][a-z0-9+\-.]*:(//[^/?#]+)?)?(/?[a-z0-9\-._~%!$&'()*+,;=@]+(/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?|/)([#?]|$)`
+- Extract the path from a string known to hold a valid URL. Use atomic grouping to match only those URLs that actually have a path:
+```markdown
+\A
+# Skip over scheme and authority, if any
+(?>([a-z][a-z0-9+\-.]*:(//[^/?#]+)?)?)
+# Path
+([a-z0-9\-._~%!$&'()*+,;=:@/]+)
+```
+- You can use a much simpler regular expression to extract the path if you already know that your subject text is a valid URL. While the generic regex in Recipe 8.7 has three different ways to match the path, depending on whether the URL specifies a scheme and/or authority, the specific regex for extracting the path from a URL known to be valid needs to match the path only once.
+
+### 8.13. Extracting the Query from a URL
+
+- You want to extract the query from a string that holds a URL. For example, you want to extract param=value from http://www.regexcookbook.com?param=value or from /index.html?param=value.
+- `^[^?#]+\?([^#]+)`
+- Extracting the query from a URL is trivial if you know that your subject text is a valid URL. The query is delimited from the part of the URL before it with a question mark. That is the first question mark allowed anywhere in URLs. Thus, we can easily skip ahead to the first question mark with ‹^[^?#]+\?›. The question mark is a metacharacter only outside character classes, but not inside, so we escape the literal question mark outside the character class. The first ‹^› is an anchor (Recipe2.5), whereas the second ‹^› negates the character class (Recipe2.3).
+- Question marks can appear in URLs as part of the (optional) fragment after the query. So we do need to use ‹^[^?#]+\?›, rather than just ‹\?›, to make sure we have the first question mark in the URL, and make sure that it isn’t part of the fragment in a URL without a query.
+- The query runs until the start of the fragment, or the end of the URL if there is no fragment. The fragment is delimited from the rest of the URL with a hash sign. Since hash signs are not permitted anywhere except in the fragment, ‹[^#]+› is all we need to match the query. The negated character class matches everything up to the first hash sign, or everything until the end of the subject if it doesn’t contain any hash signs.
+
+### 8.14. Extracting the Fragment from a URL
+
+- You want to extract the fragment from a string that holds a URL. For example, you want to extract top from http://www.regexcookbook.com#top or from /index.html#top.
+- `#(.+)`
+- Extracting the fragment from a URL is trivial if you know that your subject text is a valid URL. The fragment is delimited from the part of the URL before it with a hash sign. The fragment is the only part of URLs in which hash signs are allowed, and the fragment is always the last part of the URL. Thus, we can easily extract the fragment by finding the first hash sign and grabbing everything until the end of the string. ‹#.+› does that nicely. Make sure to turn off free-spacing mode; otherwise, you need to escape the literal hash sign with a backslash.
+- If you don’t already know that your subject text is a valid URL, you can use one of the regexes from Recipe8.7. The first regex in that recipe captures the fragment, if one is present in the URL, into capturing group number 13.
+
+### 8.15. Validating Domain Names
