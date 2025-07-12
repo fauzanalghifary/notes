@@ -237,4 +237,128 @@ b \b             # Tag name, with word boundary
 
 ### 9.4. Match XML Names
 
-- 
+- You want to check whether a string is a legitimate XML name (a common syntactic construct). XML provides precise rules for the characters that can occur in a name, and reuses those rules for element, attribute, and entity names, processing instruction targets, and more. Names must be composed of a letter, underscore, or colon as the first character, followed by any combination of letters, digits, underscores, colons, hyphens, and periods. That’s actually an approximate description, but it’s pretty close. The exact list of permitted characters depends on the version of XML in use.
+- XML 1.0 names (approximate)
+  - `^[:_\p{Ll}\p{Lu}\p{Lt}\p{Lo}\p{Nl}][:_\-.\p{L}\p{M}\p{Nd}\p{Nl}]*$`
+- XML 1.1 names (exact)
+  - `^[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD][:_\-.A-Za-z0-9\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u036F\u0370-\u037D\u037F-\u1FFF\u200C\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]*$`
+
+### 9.5. Convert Plain Text to HTML by Adding <p> and <br> Tags
+
+- Given a plain text string, such as a multiline value submitted via a form, you want to convert it to an HTML fragment to display within a web page. Paragraphs, separated by two line breaks in a row, should be surrounded with <p>⋯</p>. Additional line breaks should be replaced with <br> tags.
+- Step 1: Replace HTML special characters with named character references
+  - As we’re converting plain text to HTML, the first step is to convert the three special HTML characters &, <, and > to named character references (see Table 9-3). Otherwise, the resulting markup could lead to unintended results when displayed in a web browser.
+  - `&` => &amp;
+  - `<` => &lt;
+  - `>` => &gt;
+- Step 2: Replace all line breaks with <br>
+  - replace `\r\n?|\n` with `<br>`
+- Step 3: Replace double <br> tags with </p><p>
+  - replace `<br>\s*<br>` with `</p><p>`
+- Step 4: Wrap the entire string with <p>⋯</p>
+  - This step is a simple string concatenation, and doesn’t require regular expressions.
+```js
+function htmlFromPlainText(subject) {
+    // Step 1 (plain text searches)
+    subject = subject.replace(/&/g, "&amp;").
+                      replace(/</g, "&lt;").
+                      replace(/>/g, "&gt;");
+
+    // Step 2
+    subject = subject.replace(/\r\n?|\n/g, "<br>");
+
+    // Step 3
+    subject = subject.replace(/<br>\s*<br>/g, "</p><p>");
+
+    // Step 4
+    subject = "<p>" + subject + "</p>";
+
+    return subject;
+}
+
+// Run some tests...
+htmlFromPlainText("Test.");            // -> "<p>Test.</p>"
+htmlFromPlainText("Test.\n");          // -> "<p>Test.<br></p>"
+htmlFromPlainText("Test.\n\n");        // -> "<p>Test.</p><p></p>"
+htmlFromPlainText("Test1.\nTest2.");   // -> "<p>Test1.<br>Test2.</p>"
+htmlFromPlainText("Test1.\n\nTest2."); // -> "<p>Test1.</p><p>Test2.</p>"
+htmlFromPlainText("< AT&T >");         // -> "<p>&lt; AT&amp;T &gt;</p>"
+```
+
+### 9.6. Decode XML Entities
+
+- You want to convert all character entities defined by the XML standard to their corresponding literal characters. The conversion should handle named character references (such as &amp;, &lt;, and &quot;) as well as numeric character references (be they in decimal notation as &#0931; or &#931;, or in hexadecimal notation as &#x03A3;, &#x3A3;, or &#x3a3;).
+- Regex
+  - `&(?:#([0-9]+)|#x([0-9a-fA-F]+)|([0-9a-zA-Z]+));`
+- Replace matches with their corresponding literal characters
+```js
+// Accepts the match ($0) and backreferences; returns replacement text
+function callback($0, $1, $2, $3) {
+    var charCode;
+
+    // Name lookup object that maps to decimal character codes
+    // Equivalent hexadecimal numbers are listed in comments
+    var names = {
+        quot: 34, // 0x22
+        amp: 38, // 0x26
+        apos: 39, // 0x27
+        lt: 60, // 0x3C
+        gt: 62 // 0x3E
+    };
+
+    // Decimal character reference
+    if ($1) {
+        charCode = parseInt($1, 10);
+    // Hexadecimal character reference
+    } else if ($2) {
+        charCode = parseInt($2, 16);
+    // Named entity with a lookup mapping
+    } else if ($3 && ($3 in names)) {
+        charCode = names[$3];
+    // Invalid or unknown entity name
+    } else {
+        return $0; // Return the match unaltered
+    }
+
+    // Return a literal character
+    return String.fromCharCode(charCode);
+}
+
+// Replace all entities with literal text
+subject = subject.replace(
+        /&(?:#([0-9]+)|#x([0-9a-fA-F]+)|([0-9a-zA-Z]+));/g,
+        callback);
+```
+
+### 9.7. Find a Specific Attribute in XML-Style Tags
+
+- Within an (X)HTML or XML file, you want to find tags that contain a specific attribute, such as id.
+- Tags that contain an id attribute (quick and dirty)
+  - `<[^>]+\sid\b[^>]*>`
+```markdown
+<         # Start of the tag
+[^>]+     # Tag name, attributes, etc.
+\s id \b  # The target attribute name, as a whole word
+[^>]*     # The remainder of the tag, including the id attribute's value
+>         # End of the tag
+```
+- Tags that contain an id attribute (more reliable)
+  - `<(?:[^>"']|"[^"]*"|'[^']*')+?\sid\s*=\s*("[^"]*"|'[^']*')(?:[^>"']|"[^"]*"|'[^']*')*>`
+```markdown
+<
+(?: [^>"']             # Tag and attribute names, etc.
+  | "[^"]*"            #   and quoted attribute values
+  | '[^']*'
+)+?
+\s id                  # The target attribute name, as a whole word
+\s* = \s*              # Attribute name-value delimiter
+( "[^"]*" | '[^']*' )  # Capture the attribute value to backreference 1
+(?: [^>"']             # Any remaining characters
+  | "[^"]*"            #   and quoted attribute values
+  | '[^']*'
+)*
+>
+```
+- <div> tags that contain an id attribute
+  - `<div\s(?:[^>"']|"[^"]*"|'[^']*')*?\bid\s*=\s*("[^"]*"|'[^']*')(?:[^>"']|"[^"]*"|'[^']*')*>`
+  
