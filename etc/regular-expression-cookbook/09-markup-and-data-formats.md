@@ -359,5 +359,129 @@ subject = subject.replace(
 )*
 >
 ```
-- <div> tags that contain an id attribute
-  
+- `<div>` tags that contain an id attribute.
+  - `<div\s(?:[^>"']|"[^"]*"|'[^']*')*?\bid\s*=\s*("[^"]*"|'[^']*')(?:[^>"']|"[^"]*"|'[^']*')*>`
+```markdown
+<div \s                # Tag name and following whitespace character
+(?: [^>"']             # Tag and attribute names, etc.
+  | "[^"]*"            #   and quoted attribute values
+  | '[^']*'
+)*?
+\b id                  # The target attribute name, as a whole word
+\s* = \s*              # Attribute name-value delimiter
+( "[^"]*" | '[^']*' )  # Capture the attribute value to backreference 1
+(?: [^>"']             # Any remaining characters
+  | "[^"]*"            #   and quoted attribute values
+  | '[^']*'
+)*
+>
+```
+- Tags that contain an id attribute with the value “my-id”
+  - `<(?:[^>"']|"[^"]*"|'[^']*')+?\sid\s*=\s*(?:"my-id"|'my-id')(?:[^>"']|"[^"]*"|'[^']*')*>`
+```markdown
+<
+(?: [^>"']     # Tag and attribute names, etc.
+  | "[^"]*"    #   and quoted attribute values
+  | '[^']*'
+)+?
+\s id          # The target attribute name, as a whole word
+\s* = \s*      # Attribute name-value delimiter
+(?: "my-id"    # The target attribute value
+  | 'my-id' )  #   surrounded by single or double quotes
+(?: [^>"']     # Any remaining characters
+  | "[^"]*"    #   and quoted attribute values
+  | '[^']*'
+)*
+>
+```
+- Tags that contain “my-class” within their class attribute value
+  - `<(?:[^>"']|"[^"]*"|'[^']*')+>`
+
+### 9.8. Add a cellspacing Attribute to <table> Tags That Do Not Already Include It
+
+- You want to search through an (X)HTML file and add cellspacing="0" to all tables that do not already include a cellspacing attribute.
+- This recipe serves as an example of adding an attribute to XML-style tags that do not already include it. You can modify the regexes and replacement strings in this recipe to use whatever tag and attribute names and values you prefer.
+- Solution 1, simplistic
+  - `<table\b(?![^>]*?\scellspacing\b)([^>]*)>`
+- Solution 2, more reliable
+  - `<table\b(?!(?:[^>"']|"[^"]*"|'[^']*')*?\scellspacing\b)((?:[^>"']|"[^"]*"|'[^']*')*)>`
+- Replacement: `<table●cellspacing="0"$1>`
+
+### 9.9. Remove XML-Style Comments
+
+- You want to remove comments from an (X)HTML or XML document. For example, you want to remove development comments from a web page before it is served to web browsers, or you want to perform subsequent searches without finding any matches within comments.
+- Regex: `<!--.*?-->` or `<!--[\s\S]*?-->`
+- Replacement: ``
+- At the beginning and end of this regular expression are the literal character sequences ‹<!--› and ‹-->›. Since none of those characters are special in regex syntax (except within character classes, where hyphens create ranges), they don’t need to be escaped. That just leaves the ‹.*?› or ‹[\s\S]*?› in the middle of the regex to examine further.
+
+### 9.10. Find Words Within XML-Style Comments
+
+- You want to find all occurrences of the word TODO within (X)HTML or XML comments.
+- There are at least two approaches to this problem, and both have their advantages. The first tactic, which we’ll call the “two-step approach,” is to find comments with an outer regex, and then search within each match using a separate regex or even a plain text search. That works best if you’re writing code to do the job, since separating the task into two steps keeps things simple and fast. However, if you’re searching through files using a text editor or grep tool, splitting the task in two won’t work unless your tool of choice offers a special option to search within matches found by another regex
+- When it’s a workable option, the better solution is to split the task in two: search for comments, and then search within those comments for TODO.
+- Lookahead (described in Recipe 2.16) lets you solve this problem with a single regex, albeit less efficiently. In the following regex, positive lookahead is used to make sure that the word TODO is followed by the closing comment delimiter -->. On its own, that doesn’t tell whether the word appears within a comment or is simply followed by a comment, so a nested negative lookahead is used to ensure that the opening comment delimiter <!-- does not appear before the -->:
+  - `\bTODO\b(?=(?:(?!<!--).)*?-->)`
+
+### 9.11.Change the Delimiter Used in CSV Files
+
+- You want to change all field-delimiting commas in a CSV file to tabs. Commas that occur within double-quoted values should be left alone.
+- `(,|\r?\n|^)([^",\r\n]+|"(?:[^"]|"")*")?`
+```markdown
+( , | \r?\n | ^ )   # Capture the leading field delimiter to backref 1
+(                   # Capture a single field to backref 2:
+  [^",\r\n]+        #   Unquoted field
+|                   #  Or:
+  " (?:[^"]|"")* "  #   Quoted field (may contain escaped double quotes)
+)?                  # The group is optional because fields may be empty
+
+```
+
+### 9.12. Extract CSV Fields from a Specific Column
+
+- You want to extract every field (record item) from the third column of a CSV file.
+- The following regular expression (shown with and without the free-spacing option) matches a single CSV field and its preceding delimiter in two separate capturing groups. Since line breaks can appear within double-quoted fields, it would not be accurate to simply search from the beginning of each line in your CSV string. By matching and stepping past fields one by one, you can easily determine which line breaks appear outside of double-quoted fields and therefore start a new record.
+- `(,|\r?\n|^)([^",\r\n]+|"(?:[^"]|"")*")?`
+```markdown
+( , | \r?\n | ^ )   # Capture the leading field delimiter to backref 1
+(                   # Capture a single field to backref 2:
+  [^",\r\n]+        #   Unquoted field
+|                   #  Or:
+  " (?:[^"]|"")* "  #   Quoted field (may contain escaped double quotes)
+)?                  # The group is optional because fields may be empty
+```
+
+### 9.13. Match INI Section Headers
+
+- You want to match all section headers in an INI file.
+- `^\[[^\]\r\n]+]`
+- There aren’t many parts to this regex, so it’s easy to break down:
+  - The leading ‹^› matches the position at the beginning of a line, since the “^ and $ match at line breaks” option is enabled.
+  - ‹\[› matches a literal [ character. It’s escaped with a backslash to prevent [ from starting a character class.
+  - ‹[^\]\r\n]› is a negated character class that matches any character except ], a carriage return (\r), or a line feed (\n). The immediately following ‹+› quantifier lets the class match one or more characters, which brings us to….
+  - The trailing ‹]› matches a literal ] character to end the section header. There’s no need to escape this character with a backslash because it does not occur within a character class.
+
+### 9.14.Match INI Section Blocks
+
+- You need to match each complete INI section block (in other words, a section header and all of the section’s parameter-value pairs), in order to split up an INI file or process each block separately.
+- `^\[[^\]\r\n]+](?:\r?\n(?:[^[\r\n].*)?)*`
+```markdown
+^ \[ [^\]\r\n]+ ]  # Match a section header
+(?:                # Followed by the rest of the section:
+  \r?\n            #   Match a line break character sequence
+  (?:              #   After each line starts, match:
+    [^[\r\n]       #     Any character except "[" or a line break character
+    .*             #     Match the rest of the line
+  )?               #   The group is optional to allow matching empty lines
+)*                 # Continue until the end of the section
+```
+
+### 9.15. Match INI Name-Value Pairs
+
+- You want to match INI parameter name-value pairs (e.g., Item1=Value1), separating each match into two parts using capturing groups. Backreference 1 should contain the parameter name (Item1), and backreference 2 should contain the value (Value1).
+- `^([^=;\r\n]+)=([^;\r\n]*)`
+```markdown
+^               # Start of a line
+( [^=;\r\n]+ )  # Capture the name to backreference 1
+=               # Name-value delimiter
+( [^;\r\n]* )   # Capture the value to backreference 2
+```
