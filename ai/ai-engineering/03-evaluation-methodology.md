@@ -7,3 +7,12 @@
 
 ### Challenges of Evaluating Foundation Models
 
+- There are multiple reasons why evaluating foundation models is more challenging than evaluating traditional ML models.
+- evaluation can be so much more time-consuming for sophisticated tasks. You can no longer evaluate a response based on how it sounds. You’ll also need to fact-check, reason, and even incorporate domain expertise.
+- With traditional ML, most tasks are close-ended. For example, a classification model can only output among the expected categories. To evaluate a classification model, you can evaluate its outputs against the expected outputs. If the expected output is category X but the model’s output is category Y, the model is wrong. However, for an open-ended task, for a given input, there are so many possible correct responses. It’s impossible to curate a comprehensive list of correct outputs to compare against.
+- Details such as the model architecture, training data, and the training process can reveal a lot about a model’s strengths and weaknesses. Without those details, you can evaluate only a model by observing its outputs.
+- At the same time, publicly available evaluation benchmarks have proven to be inadequate for evaluating foundation models
+- A benchmark becomes saturated for a model once the model achieves the perfect score. With foundation models, benchmarks are becoming saturated fast
+- When asked how they are evaluating their AI applications, many people told me that they just eyeballed the results. Many have a small set of go-to prompts that they use to evaluate models. The process of curating these prompts is ad hoc, usually based on the curator’s personal experience instead of based on the application’s needs. You might be able to get away with this ad hoc approach when getting a project off the ground, but it won’t be sufficient for application iteration. This book focuses on a systematic approach to evaluation.
+
+### Understanding Language Modeling Metrics
