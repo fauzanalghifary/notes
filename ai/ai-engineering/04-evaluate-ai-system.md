@@ -67,4 +67,82 @@ Safety
 
 Instruction-Following Capability
 
+- Instruction-following measurement asks the question: how good is this model at following the instructions you give it? If the model is bad at following instructions, it doesn’t matter how good your instructions are, the outputs will be bad. 
+- Being able to follow instructions is a core requirement for foundation models, and most foundation models are trained to do so
+- Instruction-following capability is essential for applications that require structured outputs, such as in JSON format or matching a regular expression (regex)
+- Instruction-following capability isn’t straightforward to define or measure, as it can be easily conflated with domain-specific capability or generation capability.
+- How well a model performs depends on the quality of its instructions, which makes it hard to evaluate AI models. When a model performs poorly, it can either be because the model is bad or the instruction is bad.
+
+Instruction-following criteria
+- The Google benchmark IFEval, Instruction-Following Evaluation, focuses on whether the model can produce outputs following an expected format
+- GPT-4 isn’t as accurate as human experts, but it’s more accurate than annotators recruited through Amazon Mechanical Turk. They concluded that their benchmark can be automatically verified using AI judges.
+- You should curate your own benchmark to evaluate your model’s capability to follow your instructions using your own criteria. If you need a model to output YAML, include YAML instructions in your benchmark. If you want a model to not say things like “As a language model”, evaluate the model on this instruction.
+
+Roleplaying
+- One of the most common types of real-world instructions is roleplaying—asking the model to assume a fictional character or a persona.
+
+Cost and Latency
+
+- When evaluating models, it’s important to balance model quality, latency, and cost. Many companies opt for lower-quality models if they provide better cost and latency. Cost and latency optimization are discussed in detail in Chapter9, so this section will be quick.
+- When optimizing for multiple objectives, it’s important to be clear about what objectives you can and can’t compromise on
+- There are multiple metrics for latency for foundation models, including but not limited to time to first token, time per token, time between tokens, time per query, etc. It’s important to understand what latency metrics matter to you.
+- When evaluating models based on latency, it’s important to differentiate between the must-have and the nice-to-have. If you ask users if they want lower latency, nobody will ever say no. But high latency is often an annoyance, not a deal breaker.
+- If you use model APIs, your cost per token usually doesn’t change much as you scale. However, if you host your own models, your cost per token can get much cheaper as you scale.
+- Therefore, at different scales, companies need to reevaluate whether it makes more sense to use model APIs or to host their own models.
+
+### Model Selection
+
+- At the end of the day, you don’t really care about which model is the best. You care about which model is the best for your applications
+- During the application development process, as you progress through different adaptation techniques, you’ll have to do model selection over and over again. For example, prompt engineering might start with the strongest model overall to evaluate feasibility and then work backward to see if smaller models would work. If you decide to do finetuning, you might start with a small model to test your code and move toward the biggest model that fits your hardware constraints (e.g., one GPU).
+- In general, the selection process for each technique typically involves two steps:
+  - Figuring out the best achievable performance 
+  - Mapping models along the cost–performance axes and choosing the model that gives the best performance for your bucks
+
+Model Selection Workflow
+
+- When looking at models, it’s important to differentiate between hard attributes (what is impossible or impractical for you to change) and soft attributes (what you can and are willing to change).
+- When estimating how much you can improve on a certain attribute, it can be tricky to balance being optimistic and being realistic. I’ve had situations where a model’s accuracy hovered around 20% for the first few prompts. However, the accuracy jumped to 70% after I decomposed the task into two steps. At the same time, I’ve had situations where a model remained unusable for my task even after weeks of tweaking, and I had to give up on that model.
+- What you define as hard and soft attributes depends on both the model and your use case
+- At a high level, the evaluation workflow consists of four steps 
+  - Filter out models whose hard attributes don’t work for you. 
+  - Use publicly available information, e.g., benchmark performance and leaderboard ranking, to narrow down the most promising models to experiment with, balancing different objectives such as model quality, latency, and cost.
+  - Run experiments with your own evaluation pipeline to find the best model, again, balancing all your objectives.
+  - Continually monitor your model in production to detect failure and collect feedback to improve your application.
+- These four steps are iterative—you might want to change the decision from a previous step with newer information from the current step
+- Chapter10 discusses monitoring and collecting user feedback. The rest of this chapter will discuss the first three steps. 
+
+Model Build Versus Buy
+
+- To signal whether the data is also open, the term “open weight” is used for models that don’t come with open data, whereas the term “open model” is used for models that come with open data.
+- Some people argue that the term open source should be reserved only for fully open models. In this book, for simplicity, I use open source to refer to all models whose weights are made public, regardless of their training data’s availability and licenses.
+- As of this writing, the vast majority of open source models are open weight only. Model developers might hide training data information on purpose, as this information can open model developers to public scrutiny and potential lawsuits.
+- For a model to be accessible to users, a machine needs to host and run it. The service that hosts the model and receives user queries, runs the model to generate responses for queries, and returns these responses to the users is called an inference service.
+- The term model API is typically used to refer to the API of the inference service, but there are also APIs for other model services, such as finetuning APIs and evaluation APIs. Chapter9 discusses how to optimize inference services.
+- Model APIs can be available through model providers (such as OpenAI and Anthropic), cloud service providers (such as Azure and GCP [Google Cloud Platform]), or third-party API providers (such as Databricks Mosaic, Anyscale, etc.). 
+- For commercial model providers, models are their competitive advantages. For API providers that don’t have their own models, APIs are their competitive advantages. This means API providers might be more motivated to provide better APIs with better pricing.
+- Since building scalable inference services for larger models is nontrivial, many companies don’t want to build them themselves. This has led to the creation of many third-party inference and finetuning services on top of open source models. Major cloud providers like AWS, Azure, and GCP all provide API access to popular open source models. A plethora of startups are doing the same.
+- The answer to whether to host a model yourself or use a model API depends on the use case. And the same use case can change over time. Here are seven axes to consider: data privacy, data lineage, performance, functionality, costs, control, and on-device deployment.
+  - Externally hosted model APIs are out of the question for companies with strict data privacy policies that can’t send data outside of the organization
+  - What’s the problem with people using your data to train their models? While research in this area is still sparse, some studies suggest that AI models can memorize their training samples. For example, it’s been found that Hugging Face’s StarCoder model memorizes 8% of its training set. These memorized samples can be accidentally leaked to users or intentionally exploited by bad actors, as demonstrated in Chapter5.
+  - For most models, there’s little transparency about what data a model is trained on.
+  - Concerns over data lineage have driven some companies toward fully open models, whose training data has been made publicly available. The argument is that this allows the community to inspect the data and make sure that it’s safe to use. While it sounds great in theory, in practice, it’s challenging for any company to thoroughly inspect a dataset of the size typically used to train foundation models.
+  - Given the same concern, many companies opt for commercial models instead. Open source models tend to have limited legal resources compared to commercial models. If you use an open source model that infringes on copyrights, the infringed party is unlikely to go after the model developers, and more likely to go after you. However, if you use a commercial model, the contracts you sign with the model providers can potentially protect you from data lineage risks
+  - Various benchmarks have shown that the gap between open source models and proprietary models is closing. Figure4-7 shows this gap decreasing on the MMLU benchmark over time. This trend has made many people believe that one day, there will be an open source model that performs just as well, if not better, than the strongest proprietary model.
+  - For this reason, it’s likely that the strongest open source model will lag behind the strongest proprietary models for the foreseeable future. However, for many use cases that don’t need the strongest models, open source models might be sufficient.
+  - Many functionalities are needed around a model to make it work for a use case. Here are some examples of these functionalities:
+    - Scalability: making sure the inference service can support your application’s traffic while maintaining the desirable latency and cost. 
+    - Function calling: giving the model the ability to use external tools, which is essential for RAG and agentic use cases, as discussed in Chapter6. 
+    - Structured outputs, such as asking models to generate outputs in JSON format. 
+    - Output guardrails: mitigating risks in the generated responses, such as making sure the responses aren’t racist or sexist.
+  - The downside of using a model API is that you’re restricted to the functionalities that the API provides. A functionality that many use cases need is logprobs, which are very useful for classification tasks, evaluation, and interpretability. However, commercial model providers might be hesitant to expose logprobs for fear of others using logprobs to replicate their models. In fact, many model APIs don’t expose logprobs or expose only limited logprobs.
+  - You can also only finetune a commercial model if the model provider lets you. Imagine that you’ve maxed out a model’s performance with prompting and want to finetune that model. If this model is proprietary and the model provider doesn’t have a finetuning API, you won’t be able to do it.
+  - Model APIs charge per usage, which means that they can get prohibitively expensive with heavy usage. At a certain scale, a company that is bleeding its resources using APIs might consider hosting their own models
+  - However, hosting a model yourself requires nontrivial time, talent, and engineering effort. You’ll need to optimize the model, scale and maintain the inference service as needed, and provide guardrails around your model. APIs are expensive, but engineering can be even more so.
+  - In general, you want a model that is easy to use and manipulate. Typically, proprietary models are easier to get started with and scale, but open models might be easier to manipulate as their components are more accessible.
+  - Regardless of whether you go with open or proprietary models, you want this model to follow a standard API, which makes it easier to swap models. Many model developers try to make their models mimic the API of the most popular models. As of this writing, many API providers mimic OpenAI’s API.
+  - You might also prefer models with good community support. The more capabilities a model has, the more quirks it has. A model with a large community of users means that any issue you encounter may already have been experienced by others, who might have shared solutions online
+  - If you want to run a model on-device, third-party APIs are out of the question. In many use cases, running a model locally is desirable. It could be because your use case targets an area without reliable internet access. It could be for privacy reasons, such as when you want to give an AI assistant access to all your data, but don’t want your data to leave your device
+
+Navigate Public Benchmarks
+
 - 
