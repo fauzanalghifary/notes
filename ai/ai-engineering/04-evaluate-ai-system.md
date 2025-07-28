@@ -145,4 +145,96 @@ Model Build Versus Buy
 
 Navigate Public Benchmarks
 
-- 
+- The number of benchmarks rapidly grows to match the rapidly growing number of AI use cases. In addition, as AI models improve, old benchmarks saturate, necessitating the introduction of new benchmarks.
+- Given so many benchmarks out there, it’s impossible to look at them all, let alone aggregate their results to decide which model is the best.
+- Many public leaderboards rank models based on their aggregated performance on a subset of benchmarks. These leaderboards are immensely helpful but far from being comprehensive. First, due to the compute constraint—evaluating a model on a benchmark requires compute—most leaderboards can incorporate only a small number of benchmarks.
+- A small set of benchmarks is not nearly enough to represent the vast capabilities and different failure modes of foundation models.
+- Additionally, while leaderboard developers are generally thoughtful about how they select benchmarks, their decision-making process isn’t always clear to users. Different leaderboards often end up with different benchmarks, making it hard to compare and interpret their rankings
+- Public leaderboards, in general, try to balance coverage and the number of benchmarks. They try to pick a small set of benchmarks that cover a wide range of capabilities, typically including reasoning, factual consistency, and domain-specific capabilities such as math and science.
+- An important aspect of benchmark selection that is often overlooked is benchmark correlation. It is important because if two benchmarks are perfectly correlated, you don’t want both of them. Strongly correlated benchmarks can exaggerate biases.
+- While I was writing this book, many benchmarks became saturated or close to being saturated. In June 2024, less than a year after their leaderboard’s last revamp, Hugging Face updated their leaderboard again with an entirely new set of benchmarks that are more challenging and focus on more practical capabilities
+- I have no doubt that these benchmarks will soon become saturated. However, discussing specific benchmarks, even if outdated, can still be useful as examples to evaluate and interpret benchmarks
+- While public leaderboards are useful to get a sense of models’ broad performance, it’s important to understand what capabilities a leaderboard is trying to capture. A model that ranks high on a public leaderboard will likely, but far from always, perform well for your application. If you want a model for code generation, a public leaderboard that doesn’t include a code generation benchmark might not help you as much.
+- Once you’ve selected a set of benchmarks and obtained the scores for the models you care about on these benchmarks, you then need to aggregate these scores to rank models. Not all benchmark scores are in the same unit or scale. One benchmark might use accuracy, another F1, and another BLEU score. You will need to think about how important each benchmark is to you and weigh their scores accordingly.
+- As you evaluate models using public benchmarks, keep in mind that the goal of this process is to select a small subset of models to do more rigorous experiments using your own benchmarks and metrics. This is not only because public benchmarks are unlikely to represent your application’s needs perfectly, but also because they are likely contaminated.
+- Data contamination happens when a model was trained on the same data it’s evaluated on. If so, it’s possible that the model just memorizes the answers it saw during training, causing it to achieve higher evaluation scores than it should. A model that is trained on the MMLU benchmark can achieve high MMLU scores without being useful.
+- While some might intentionally train on benchmark data to achieve misleadingly high scores, most data contamination is unintentional. Many models today are trained on data scraped from the internet, and the scraping process can accidentally pull data from publicly available benchmarks. Benchmark data published before the training of a model is likely included in the model’s training data.27 It’s one of the reasons existing benchmarks become saturated so quickly, and why model developers often feel the need to create new benchmarks to evaluate their new models.
+- Data contamination can happen indirectly, such as when both evaluation and training data come from the same source. For example, you might include math textbooks in the training data to improve the model’s math capabilities, and someone else might use questions from the same math textbooks to create a benchmark to evaluate the model’s capabilities.
+- To deal with data contamination, you first need to detect the contamination, and then decontaminate your data. You can detect contamination using heuristics like n-gram overlapping and perplexity:
+  - For example, if a sequence of 13 tokens in an evaluation sample is also in the training data, the model has likely seen this evaluation sample during training. This evaluation sample is considered dirty.
+  - If a model’s perplexity on evaluation data is unusually low, meaning the model can easily predict the text, it’s possible that the model has seen this data before during training.
+- In the past, ML textbooks advised removing evaluation samples from the training data. The goal is to keep evaluation benchmarks standardized so that we can compare different models. However, with foundation models, most people don’t have control over training data
+- Public benchmarks will help you filter out bad models, but they won’t help you find the best models for your application. After using public benchmarks to narrow them to a set of promising models, you’ll need to run your own evaluation pipeline to find the best one for your application. How to design a custom evaluation pipeline will be our next topic.
+
+### Design Your Evaluation Pipeline
+
+- The success of an AI application often hinges on the ability to differentiate good outcomes from bad outcomes. To be able to do this, you need an evaluation pipeline that you can rely upon
+- This section focuses on evaluating open-ended tasks. Evaluating close-ended tasks is easier, and its pipeline can be inferred from this process.
+
+Step 1. Evaluate All Components in a System
+
+- Evaluation can happen at different levels: per task, per turn, and per intermediate output.
+- You should evaluate the end-to-end output and each component’s intermediate output independently
+- If applicable, evaluate your application both per turn and per task. A turn can consist of multiple steps and messages. If a system takes multiple steps to generate an output, it’s still considered a turn.
+- Turn-based evaluation evaluates the quality of each output. Task-based evaluation evaluates whether a system completes a task. 
+- Given that what users really care about is whether a model can help them accomplish their tasks, task-based evaluation is more important. However, a challenge of task-based evaluation is it can be hard to determine the boundaries between tasks. 
+
+Step 2. Create an Evaluation Guideline
+
+- Creating a clear evaluation guideline is the most important step of the evaluation pipeline
+- If you don’t know what bad responses look like, you won’t be able to catch them.
+- When creating the evaluation guideline, it’s important to define not only what the application should do, but also what it shouldn’t do.
+- Often, the hardest part of evaluation isn’t determining whether an output is good, but rather what good means
+- In retrospect of one year of deploying generative AI applications, LinkedIn shared that the first hurdle was in creating an evaluation guideline. A correct response is not always a good response.
+- Before building your application, think about what makes a good response.
+- To come up with these criteria, you might need to play around with test queries, ideally real user queries. For each of these test queries, generate multiple responses, either manually or using AI models, and determine if they are good or bad.
+- For each criterion, choose a scoring system: would it be binary (0 and 1), from 1 to 5, between 0 and 1, or something else?
+- Which scoring system to use depends on your data and your needs.
+- On this scoring system, create a rubric with examples. What does a response with a score of 1 look like and why does it deserve a 1? Validate your rubric with humans: yourself, coworkers, friends, etc. If humans find it hard to follow the rubric, you need to refine it to make it unambiguous. This process can require a lot of back and forth, but it’s necessary
+- A clear guideline is the backbone of a reliable evaluation pipeline
+- Within a business, an application must serve a business goal. The application’s metrics must be considered in the context of the business problem it’s built to solve.
+- Ideally, you want to map evaluation metrics to business metrics, to something that looks like this:
+  - Factual consistency of 80%: we can automate 30% of customer support requests. 
+  - Factual consistency of 90%: we can automate 50%. 
+  - Factual consistency of 98%: we can automate 90%.
+- Understanding the impact of evaluation metrics on business metrics is helpful for planning. If you know how much gain you can get from improving a certain metric, you might have more confidence to invest resources into improving that metric.
+- It’s also helpful to determine the usefulness threshold: what scores must an application achieve for it to be useful? For example, you might determine that your chatbot’s factual consistency score must be at least 50% for it to be useful. Anything below this makes it unusable even for general customer requests.
+- Before developing AI evaluation metrics, it’s crucial to first understand the business metrics you’re targeting. Many applications focus on stickiness metrics, such as daily, weekly, or monthly active users (DAU, WAU, MAU). Others prioritize engagement metrics, like the number of conversations a user initiates per month or the duration of each visit—the longer a user stays on the app, the less likely they are to leave.
+
+Step 3. Define Evaluation Methods and Data
+
+- Different criteria might require different evaluation methods.
+- It’s possible to mix and match evaluation methods for the same criteria. For example, you might have a cheap classifier that gives low-quality signals on 100% of your data, and an expensive AI judge to give high-quality signals on 1% of the data. This gives you a certain level of confidence in your application while keeping costs manageable.
+- When logprobs are available, use them. Logprobs can be used to measure how confident a model is about a generated token. This is especially useful for classification.
+- Use automatic metrics as much as possible, but don’t be afraid to fall back on human evaluation, even in production. Having human experts manually evaluate a model’s quality is a long-standing practice in AI.
+- Each day, you can use human experts to evaluate a subset of your application’s outputs that day to detect any changes in the application’s performance or unusual patterns in usage. For example, LinkedIn developed a process to manually evaluate up to 500 daily conservations with their AI systems.
+- Consider evaluation methods to be used not just during experimentation but also during production. During experimentation, you might have reference data to compare your application’s outputs to, whereas, in production, reference data might not be immediately available. However, in production, you have actual users. Think about what kinds of feedback you want from users, how user feedback correlates to other evaluation metrics, and how to use user feedback to improve your application
+- Curate a set of annotated examples to evaluate your application. You need annotated data to evaluate each of your system’s components and each criterion, for both turn-based and task-based evaluation. Use actual production data if possible. If your application has natural labels that you can use, that’s great. If not, you can use either humans or AI to label your data
+- Slice your data to gain a finer-grained understanding of your system. Slicing means separating your data into subsets and looking at your system’s performance on each subset separately.
+- You should have multiple evaluation sets to represent different data slices. You should have one set that represents the distribution of the actual production data to estimate how the system does overall. You can slice your data based on tiers (paying users versus free users), traffic sources (mobile versus web), usage, and more. You can have a set consisting of the examples for which the system is known to frequently make mistakes
+- If you care about something, put a test set on it. The data curated and annotated for evaluation can then later be used to synthesize more data for training, as discussed in Chapter8.
+- How much data you need for each evaluation set depends on the application and evaluation methods you use. In general, the number of examples in an evaluation set should be large enough for the evaluation result to be reliable, but small enough to not be prohibitively expensive to run.
+- Let’s say you have an evaluation set of 100 examples. To know whether 100 is sufficient for the result to be reliable, you can create multiple bootstraps of these 100 examples and see if they give similar evaluation results. Basically, you want to know that if you evaluate the model on a different evaluation set of 100 examples, would you get a different result? If you get 90% on one bootstrap but 70% on another bootstrap, your evaluation pipeline isn’t that trustworthy.
+- Concretely, here’s how each bootstrap works:
+  - Draw 100 samples, with replacement, from the original 100 evaluation examples. 
+  - Evaluate your model on these 100 bootstrapped samples and obtain the evaluation results. 
+  - Repeat for a number of times. If the evaluation results vary wildly for different bootstraps, this means that you’ll need a bigger evaluation set.
+- Evaluation results are used not just to evaluate a system in isolation but also to compare systems. They should help you decide which model, prompt, or other component is better. Say a new prompt achieves a 10% higher score than the old prompt—how big does the evaluation set have to be for us to be certain that the new prompt is indeed better? In theory, a statistical significance test can be used to compute the sample size needed for a certain level of confidence (e.g., 95% confidence) if you know the score distribution. However, in reality, it’s hard to know the true score distribution.
+- A useful rule is that for every 3× decrease in score difference, the number of samples needed increases 10×.
+- Evaluating your evaluation pipeline can help with both improving your pipeline’s reliability and finding ways to make your evaluation pipeline more efficient. Reliability is especially important with subjective evaluation methods such as AI as a judge.
+- Here are some questions you should be asking about the quality of your evaluation pipeline:
+  - Is your evaluation pipeline getting you the right signals?
+    - Do better responses indeed get higher scores? Do better evaluation metrics lead to better business outcomes?
+  - How reliable is your evaluation pipeline?
+    - If you run the same pipeline twice, do you get different results? If you run the pipeline multiple times with different evaluation datasets, what would be the variance in the evaluation results? You should aim to increase reproducibility and reduce variance in your evaluation pipeline. Be consistent with the configurations of your evaluation. For example, if you use an AI judge, make sure to set your judge’s temperature to 0.
+  - How correlated are your metrics?
+    - if two metrics are perfectly correlated, you don’t need both of them. On the other hand, if two metrics are not at all correlated, this means either an interesting insight into your model or that your metrics just aren’t trustworthy
+  - How much cost and latency does your evaluation pipeline add to your application?
+    - Evaluation, if not done carefully, can add significant latency and cost to your application. Some teams decide to skip evaluation in the hope of reducing latency. It’s a risky bet.
+- As your needs and user behaviors change, your evaluation criteria will also evolve, and you’ll need to iterate on your evaluation pipeline
+- While iteration is necessary, you should be able to expect a certain level of consistency from your evaluation pipeline. If the evaluation process changes constantly, you won’t be able to use the evaluation results to guide your application’s development.
+- As you iterate on your evaluation pipeline, make sure to do proper experiment tracking: log all variables that could change in an evaluation process, including but not limited to the evaluation data, the rubric, and the prompt and sampling configurations used for the AI judges.
+
+### Summary
+
+- This is one of the hardest, but I believe one of the most important, AI topics that I’ve written about. Not having a reliable evaluation pipeline is one of the biggest blocks to AI adoption. While evaluation takes time, a reliable evaluation pipeline will enable you to reduce risks, discover opportunities to improve performance, and benchmark progresses, which will all save you time and headaches down the line.
