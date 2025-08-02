@@ -141,10 +141,52 @@ RAG with tabular data
 
 ### Agents
 
+- Intelligent agents are considered by many to be the ultimate goal of AI.
+- The unprecedented capabilities of foundation models have opened the door to agentic applications that were previously unimaginable. These new capabilities make it finally possible to develop autonomous, intelligent agents to act as our assistants, coworkers, and coaches. They can help us create a website, gather data, plan a trip, do market research, manage a customer account, automate data entry, prepare us for interviews, interview our candidates, negotiate a deal, etc. The possibilities seem endless, and the potential economic value of these agents is enormous.
+- AI-powered agents are an emerging field, with no established theoretical frameworks for defining, developing, and evaluating them. This section is a best-effort attempt to build a framework from the existing literature, but it will evolve as the field does. Compared to the rest of the book, this section is more experimental.
+- two aspects that determine the capabilities of an agent: tools and planning
+- Even though agents are novel, they are built upon concepts that have already appeared in this book, including self-critique, chain-of-thought, and structured outputs.
 
+Agent Overview
 
+- An agent is anything that can perceive its environment and act upon that environment.10 This means that an agent is characterized by the environment it operates in and the set of actions it can perform.
+- The environment an agent can operate in is defined by its use case.
+- The set of actions an AI agent can perform is augmented by the tools it has access to. 
+- There’s a strong dependency between an agent’s environment and its set of tools. The environment determines what tools an agent can potentially use
+- An AI agent is meant to accomplish tasks typically provided by the users in the inputs. In an AI agent, AI is the brain that processes the information it receives, including the task and feedback from the environment, plans a sequence of actions to achieve this task, and determines whether the task has been accomplished.
+- Compared to non-agent use cases, agents typically require more powerful models for two reasons:
+  - Compound mistakes: an agent often needs to perform multiple steps to accomplish a task, and the overall accuracy decreases as the number of steps increases. If the model’s accuracy is 95% per step, over 10 steps, the accuracy will drop to 60%, and over 100 steps, the accuracy will be only 0.6%.
+  - Higher stakes: with access to tools, agents are capable of performing more impactful tasks, but any failure could have more severe consequences.
+- A task that requires many steps can take time and money to run.11 However, if agents can be autonomous, they can save a lot of human time, making their costs worthwhile.
+- Given an environment, the success of an agent in an environment depends on the tool inventory it has access to and the strength of its AI planner.
 
+Tools
 
+- A system doesn’t need access to external tools to be an agent. However, without external tools, the agent’s capabilities would be limited. By itself, a model can typically perform one action—for example, an LLM can generate text, and an image generator can generate images. External tools make an agent vastly more capable.
+- Tools help an agent to both perceive the environment and act upon it. Actions that allow an agent to perceive the environment are read-only actions, whereas actions that allow an agent to act upon the environment are write actions.
+- The set of tools an agent has access to is its tool inventory. Since an agent’s tool inventory determines what an agent can do, it’s important to think through what and how many tools to give an agent. More tools give an agent more capabilities. However, the more tools there are, the more challenging it is to understand and utilize them well. Experimentation is necessary to find the right set of tools, as discussed in “Tool selection”.
+- Depending on the agent’s environment, there are many possible tools. Here are three categories of tools that you might want to consider: 
+  - knowledge augmentation (i.e., context construction),
+  - capability extension, and 
+  - tools that let your agent act upon its environment.
+- Knowledge augmentation
+  - An important category of tools includes those that help augment your agent’s knowledge of your agent. Some of them have already been discussed: text retriever, image retriever, and SQL executor. Other potential tools include internal people search, an inventory API that returns the status of different products, Slack retrieval, an email reader, etc.
+  - However, tools can also give models access to public information, especially from the internet.
+  - Web browsing was among the earliest and most anticipated capabilities to be incorporated into chatbots like ChatGPT. Web browsing prevents a model from going stale. A model goes stale when the data it was trained on becomes outdated.
+  - Without web browsing, a model won’t be able to tell you about the weather, news, upcoming events, stock prices, flight status, etc.
+  - While web browsing allows your agent to reference up-to-date information to generate better responses and reduce hallucinations, it can also open up your agent to the cesspools of the internet. Select your Internet APIs with care.
+- Capability extension
+  - Other simple tools that can significantly boost a model’s capability include a calendar, timezone converter, unit converter (e.g., from lbs to kg), and translator that can translate to and from the languages that the model isn’t good at.
+  - More complex but powerful tools are code interpreters. Instead of training a model to understand code, you can give it access to a code interpreter so that it can execute a piece of code, return the results, or analyze the code’s failures. This capability lets your agents act as coding assistants, data analysts, and even research assistants that can write code to run experiments and report results
+  - Agents can also use a code interpreter to generate charts and graphs, a LaTeX compiler to render math equations, or a browser to render web pages from HTML code.
+  - Tool use can significantly boost a model’s performance compared to just prompting or even finetuning
+- Write actions
+  - Write actions enable a system to do more. They can enable you to automate the whole customer outreach workflow: researching potential customers, finding their contacts, drafting emails, sending first emails, reading responses, following up, extracting orders, updating your databases with new orders, etc.
+  - Trust in the system’s capabilities and its security measures is crucial. You need to ensure that the system is protected from bad actors who might try to manipulate it into performing harmful actions.
+
+Planning
+
+- 
 
 ### Memory
 
