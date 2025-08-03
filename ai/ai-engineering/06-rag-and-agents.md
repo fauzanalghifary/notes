@@ -186,10 +186,146 @@ Tools
 
 Planning
 
-- 
+- At the heart of a foundation model agent is the model responsible for solving a task. A task is defined by its goal and constraints.
+- Complex tasks require planning. The output of the planning process is a plan, which is a roadmap outlining the steps needed to accomplish a task. Effective planning typically requires the model to understand the task, consider different options to achieve this task, and choose the most promising one.
+- As an important computational problem, planning is well studied and would require several volumes to cover. I’ll only be able to cover the surface here.
+
+Planning overview
+
+- Among the correct solutions, some are more efficient than others. Consider the query, “How many companies without revenue have raised at least $1 billion?” There are many possible ways to solve this, but as an illustration, consider the two options:
+  - Find all companies without revenue, then filter them by the amount raised. 
+  - Find all companies that have raised at least $1 billion, then filter them by revenue. 
+  - The second option is more efficient.
+- To avoid fruitless execution, planning should be decoupled from execution. You ask the agent to first generate a plan, and only after this plan is validated is it executed. The plan can be validated using heuristics. For example, one simple heuristic is to eliminate plans with invalid actions.
+- Your system now has three components: one to generate plans, one to validate plans, and another to execute plans. If you consider each component an agent, this is a multi-agent system.
+- Planning requires understanding the intention behind a task: what’s the user trying to do with this query? An intent classifier is often used to help agents plan. As shown in “Break Complex Tasks into Simpler Subtasks”, intent classification can be done using another prompt or a classification model trained for this task. The intent classification mechanism can be considered another agent in your multi-agent system.
+- So far, we’ve assumed that the agent automates all three stages: generating plans, validating plans, and executing plans. In reality, humans can be involved at any of those stages to aid with the process and mitigate risks. A human expert can provide a plan, validate a plan, or execute parts of a plan. For example, for complex tasks for which an agent has trouble generating the whole plan, a human expert can provide a high-level plan that the agent can expand upon. If a plan involves risky operations, such as updating a database or merging a code change, the system can ask for explicit human approval before executing or let humans execute these operations. To make this possible, you need to clearly define the level of automation an agent can have for each action.
+- To summarize, solving a task typically involves the following processes.
+  - Plan generation
+  - Reflection and error correction
+  - Execution
+  - Reflection and error correction
+
+Foundation models as planners
+
+- An open question is how well foundation models can plan. Many researchers believe that foundation models, at least those built on top of autoregressive language models, cannot. Meta’s Chief AI Scientist Yann LeCun states unequivocally that autoregressive LLMs can’t plan (2023). In the article “Can LLMs Really Reason and Plan?” Kambhampati (2023) argues that LLMs are great at extracting knowledge but not planning.
+- However, while there is a lot of anecdotal evidence that LLMs are poor planners, it’s unclear whether it’s because we don’t know how to use LLMs the right way or because LLMs, fundamentally, can’t plan.
+- Planning, at its core, is a search problem. You search among different paths to the goal, predict the outcome (reward) of each path, and pick the path with the most promising outcome. Often, you might determine that no path exists that can take you to the goal.
+- Search often requires backtracking. For example, imagine you’re at a step where there are two possible actions: A and B. After taking action A, you enter a state that’s not promising, so you need to backtrack to the previous state to take action B.
+- This means it’s not sufficient to prompt a model to generate only a sequence of actions like what the popular chain-of-thought prompting technique does. The paper “Reasoning with Language Model is Planning with World Model” (Hao et al., 2023) argues that an LLM, by containing so much information about the world, is capable of predicting the outcome of each action. This LLM can incorporate this outcome prediction to generate coherent plans.
+- The agent is a core concept in RL
+
+Plan generation
+
+- The simplest way to turn a model into a plan generator is with prompt engineering
+- Here are a few approaches to make an agent better at planning:
+  - Write a better system prompt with more examples. 
+  - Give better descriptions of the tools and their parameters so that the model understands them better. 
+  - Rewrite the functions themselves to make them simpler, such as refactoring a complex function into two simpler functions. 
+  - Use a stronger model. In general, stronger models are better at planning. 
+  - Finetune a model for plan generation.
+- When working with agents, always ask the system to report what parameter values it uses for each function call. Inspect these values to make sure they are correct.
+
+Planning granularity
+
+- A plan is a roadmap outlining the steps needed to accomplish a task. A roadmap can be of different levels of granularity.
+- There’s a planning/execution trade-off. A detailed plan is harder to generate but easier to execute. A higher-level plan is easier to generate but harder to execute. An approach to circumvent this trade-off is to plan hierarchically. First, use a planner to generate a high-level plan, such as a quarter-to-quarter plan. Then, for each quarter, use the same or a different planner to generate a month-to-month plan.
+- Using more natural language helps your plan generator become robust to changes in tool APIs. If your model was trained mostly on natural language, it’ll likely be better at understanding and generating plans in natural language and less likely to hallucinate.
+- The downside of this approach is that you need a translator to translate each natural language action into executable commands.13 However, translating is a much simpler task than planning and can be done by weaker models with a lower risk of hallucination.
+
+Complex plans
+
+- The plan examples so far have been sequential: the next action in the plan is always executed after the previous action is done. The order in which actions can be executed is called a control flow. The sequential form is just one type of control flow
+- Other types of control flows include the parallel, if statement, and for loop
+  - Sequential
+  - Parallel
+  - If statement
+  - For loop
+
+Reflection and error correction
+
+- Even the best plans need to be constantly evaluated and adjusted to maximize their chance of success. While reflection isn’t strictly necessary for an agent to operate, it’s necessary for an agent to succeed.
+- Reflection can be useful in many places during a task process:
+  - After receiving a user query to evaluate if the request is feasible. 
+  - After the initial plan generation to evaluate whether the plan makes sense. 
+  - After each execution step to evaluate if it’s on the right track. 
+  - After the whole plan has been executed to determine if the task has been accomplished.
+- You can implement reflection in a multi-agent setting: one agent plans and takes actions, and another agent evaluates the outcome after each step or after a number of steps
+- If the agent’s response failed to accomplish the task, you can prompt the agent to reflect on why it failed and how to improve. Based on this suggestion, the agent generates a new plan. This allows agents to learn from their mistakes
+- Compared to plan generation, reflection is relatively easy to implement and can bring surprisingly good performance improvement. The downside of this approach is latency and cost. Thoughts, observations, and sometimes actions can take a lot of tokens to generate, which increases cost and user-perceived latency, especially for tasks with many intermediate steps
+
+Tool selection
+
+- Because tools often play a crucial role in a task’s success, tool selection requires careful consideration. The tools to give your agent depend on the environment and the task, but they also depend on the AI model that powers the agent.
+- Experiments by Lu et al. (2023) also demonstrate two points:
+  - Different tasks require different tools
+  - Different models have different tool preferences.
+
+Agent Failure Modes and Evaluation
+
+- Evaluation is about detecting failures. The more complex a task an agent performs, the more possible failure points there are. Other than the failure modes common to all AI applications discussed in Chapters 3 and 4, agents also have unique failures caused by planning, tool execution, and efficiency.
+
+Planning failures
+
+- Planning is hard and can fail in many ways. The most common mode of planning failure is tool use failure. The agent might generate a plan with one or more of these errors:
+  - Invalid tool
+  - Valid tool, invalid parameters.
+  - Valid tool, incorrect parameter values
+- Another mode of planning failure is goal failure: the agent fails to achieve the goal. This can be because the plan doesn’t solve a task, or it solves the task without following the constraints
+- A common constraint that is often overlooked by agent evaluation is time. In many cases, the time an agent takes matters less, because you can assign a task to an agent and only need to check in when it’s done. However, in many cases, the agent becomes less useful with time
+- An interesting mode of planning failure is caused by errors in reflection. The agent is convinced that it’s accomplished a task when it hasn’t.
+- Compute the following metrics:
+  - Out of all generated plans, how many are valid? 
+  - For a given task, how many plans does the agent have to generate, on average, to get a valid plan? 
+  - Out of all tool calls, how many are valid? 
+  - How often are invalid tools called? 
+  - How often are valid tools called with invalid parameters? 
+  - How often are valid tools called with incorrect parameter values?
+- Analyze the agent’s outputs for patterns. What types of tasks does the agent fail more on? Do you have a hypothesis why? What tools does the model frequently make mistakes with? Some tools might be harder for an agent to use. You can improve an agent’s ability to use a challenging tool by better prompting, more examples, or finetuning. If all fail, you might consider swapping this tool for something easier to use.
+
+Tool failures
+
+- Tool failures happen when the correct tool is used, but the tool output is wrong. One failure mode is when a tool just gives the wrong outputs.
+- Tool failures can also happen because the agent doesn’t have access to the right tools for the task. An obvious example is when the task involves retrieving the current stock prices from the internet, and the agent doesn’t have access to the internet.
+- Detecting missing tool failures requires an understanding of what tools should be used. If your agent frequently fails on a specific domain, this might be because it lacks tools for this domain. Work with human domain experts and observe what tools they would use.
+
+Efficiency
+
+- An agent might generate a valid plan using the right tools to accomplish a task, but it might be inefficient. Here are a few things you might want to track to evaluate an agent’s efficiency:
+  - How many steps does the agent need, on average, to complete a task? 
+  - How much does the agent cost, on average, to complete a task? 
+  - How long does each action typically take? Are there any actions that are especially time-consuming or expensive?
+- In this chapter, we’ve discussed in detail how RAG and agent systems function. Both patterns often deal with information that exceeds a model’s context limit. A memory system that supplements the model’s context in handling information can significantly enhance its capabilities. Let’s now explore how a memory system works.
 
 ### Memory
 
-
+- Memory refers to mechanisms that allow a model to retain and utilize information. A memory system is especially useful for knowledge-rich applications like RAG and multi-step applications like agents. A RAG system relies on memory for its augmented context, which can grow over multiple turns as it retrieves more information. An agentic system needs memory to store instructions, examples, context, tool inventories, plans, tool outputs, reflections, and more.
+- An AI model typically has three main memory mechanisms:
+  - Internal knowledge
+    - The model itself is a memory mechanism, as it retains the knowledge from the data it was trained on. This knowledge is its internal knowledge. A model’s internal knowledge doesn’t change unless the model itself is updated.
+  - Short-term memory
+    - A model’s context is a memory mechanism. Previous messages in a conversation can be added to the model’s context, allowing the model to leverage them to generate future responses
+  - Long-term memory
+    - External data sources that a model can access via retrieval, such as in a RAG system, are a memory mechanism. This can be considered the model’s long-term memory, as it can be persisted across tasks. Unlike a model’s internal knowledge, information in the long-term memory can be deleted without updating the model.
+- Which memory mechanism to use for your data depends on its frequency of use. Information essential for all tasks should be incorporated into the model’s internal knowledge via training or finetuning. Information that is rarely needed should reside in its long-term memory. Short-term memory is reserved for immediate, context-specific information.
+- Augmenting an AI model with a memory system has many benefits.
+  - Manage information overflow within a session
+    - During the process of executing a task, an agent acquires a lot of new information, which can exceed the agent’s maximum context length. The excess information can be stored in a memory system with long-term memories.
+  - Persist information between sessions
+  - Boost a model’s consistency
+    - Having a memory system capable of storing structured data can help maintain the structural integrity of your data.
+- A memory system for AI models typically consists of two functions:
+  - Memory management: managing what information should be stored in the short-term and long-term memory. 
+  - Memory retrieval: retrieving information relevant to the task from long-term memory.
+- Long-term memory can be used to store the overflow from short-term memory. This operation depends on how much space you want to allocate for short-term memory. For a given query, the context input into the model consists of both its short-term memory and information retrieved from its long-term memory. A model’s short-term capacity is, therefore, determined by how much of the context should be allocated for information retrieved from long-term memory. For example, if 30% of the context is reserved, then the model can use at most 70% of the context limit for short-term memory. When this threshold is reached, the overflow can be moved to long-term memory.
+- When encountering contradicting pieces of information, some people opt to keep the newer ones. Some people ask AI models to judge which one to keep. How to handle contradiction depends on the use case. Having contradictions can cause an agent to be confused but can also help it draw from different perspectives.
 
 ### Summary
+
+- This chapter started with RAG, the pattern that emerged first between the two. Many tasks require extensive background knowledge that often exceeds a model’s context window.
+- Originally developed to overcome a model’s context limitations, RAG also enables more efficient use of information, improving response quality while reducing costs. From the early days of foundation models, it was clear that the RAG pattern would be immensely valuable for a wide range of applications, and it has since been rapidly adopted across both consumer and enterprise use cases.
+- RAG employs a two-step process. It first retrieves relevant information from external memory and then uses this information to generate more accurate responses. The success of a RAG system depends on the quality of its retriever. Term-based retrievers, such as Elasticsearch and BM25, are much lighter to implement and can provide strong baselines. Embedding-based retrievers are more computationally intensive but have the potential to outperform term-based algorithms.
+- The RAG pattern can be seen as a special case of agent where the retriever is a tool the model can use. Both patterns allow a model to circumvent its context limitation and stay more up-to-date, but the agentic pattern can do even more than that. An agent is defined by its environment and the tools it can access. In an AI-powered agent, AI is the planner that analyzes its given task, considers different solutions, and picks the most promising one. A complex task can require many steps to solve, which requires a powerful model to plan. A model’s ability to plan can be augmented with reflection and a memory system to help it keep track of its progress.
+- Both RAG and agents work with a lot of information, which often exceeds the maximum context length of the underlying model. This necessitates the introduction of a memory system for managing and using all the information a model has. This chapter ended with a short discussion on what this component looks like.
+- 
+
