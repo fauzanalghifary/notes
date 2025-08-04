@@ -160,7 +160,125 @@ Parameter-Efficient Finetuning
 
 PEFT techniques
 
-- 
+- The existing prolific world of PEFT generally falls into two buckets: adapter-based methods and soft prompt-based methods. However, it’s likely that newer buckets will be introduced in the future.
+- Adapter-based methods refer to all methods that involve additional modules to the model weights
+- As of this writing, LoRA (Hu et al., 2021) is by far the most popular adapter-based method, and it will be the topic of the following section. 
+- If adapter-based methods add trainable parameters to the model’s architecture, soft prompt-based methods modify how the model processes the input by introducing special trainable tokens. These additional tokens are fed into the model alongside the input tokens. They are called soft prompts because, like the inputs (hard prompts), soft prompts also guide the model’s behaviors
+- However, soft prompts differ from hard prompts in two ways:
+  - Hard prompts are human-readable. They typically contain discrete tokens such as “I”, “write”, “a”, and “lot”. In contrast, soft prompts are continuous vectors, resembling embedding vectors, and are not human-readable. 
+  - Hard prompts are static and not trainable, whereas soft prompts can be optimized through backpropagation during the tuning process, allowing them to be adjusted for specific tasks.
+- Some people describe soft prompting as a crossover between prompt engineering and finetuning
+- From this analysis, it’s clear that LoRA dominates. Soft prompts are less common, but there seems to be growing interest from those who want more customization than what is afforded by prompt engineering but who don’t want to invest in finetuning.
 
+LoRA
+
+- Unlike the original adapter method by Houlsby et al. (2019), LoRA (Low-Rank Adaptation) (Hu et al., 2021) incorporates additional parameters in a way that doesn’t incur extra inference latency. Instead of introducing additional layers to the base model, LoRA uses modules that can be merged back to the original layers.
+- LoRA (Low-Rank Adaptation) is built on the concept of low-rank factorization, a long-standing dimensionality reduction technique. The key idea is that you can factorize a large matrix into a product of two smaller matrices to reduce the number of parameters, which, in turn, reduces both the computation and memory requirements.
+- While factorization can significantly reduce the number of parameters, it’s lossy because it only approximates the original matrix. The higher the rank, the more information from the original matrix the factorization can preserve.
+- Like the original adapter method, LoRA is parameter-efficient and sample-efficient. The factorization enables LoRA to use even fewer trainable parameters. The LoRA paper showed that, for GPT-3, LoRA achieves comparable or better performance with full finetuning on several tasks while using only ~4.7M trainable parameters, 0.0027% of full finetuning.
+
+Why does LoRA work?
+
+- If a model requires a lot of parameters to learn certain behaviors during pre-training, shouldn’t it also require a lot of parameters to change its behaviors during finetuning?
+- The same question can be raised for data. If a model requires a lot of data to learn a behavior, shouldn’t it also require a lot of data to meaningfully change this behavior? How is it possible that you need millions or billions of examples to pre-train a model, but only a few hundreds or thousands of examples to finetune it?
+- Many papers have argued that while LLMs have many parameters, they have very low intrinsic dimensions
+- This suggests that pre-training acts as a compression framework for downstream tasks. In other words, the better trained an LLM is, the easier it is to finetune the model using a small number of trainable parameters and a small amount of data.
+- You might wonder, if low-rank factorization works so well, why don’t we use LoRA for pre-training as well? Instead of pre-training a large model and applying low-rank factorization only during finetuning, could we factorize a model from the start for pre-training? 
+- It’s possible that one day not too far in the future, researchers will develop a way to scale up low-rank pre-training to hundreds of billions of parameters. However, if Aghajanyan et al.’s argument is correct—that pre-training implicitly compresses a model’s intrinsic dimension—full-rank pre-training is still necessary to sufficiently reduce the model’s intrinsic dimension to a point where low-rank factorization can work. It would be interesting to study exactly how much full-rank training is necessary before it’s possible to switch to low-rank training.
+
+LoRA configurations
+
+- To apply LoRA, you need to decide what weight matrices to apply LoRA to and the rank of each factorization. This section will discuss the considerations for each of these decisions.
+- The efficiency of LoRA, therefore, depends not only on what matrices LoRA is applied to but also on the model’s architecture, as different architectures have different weight matrices.
+- While there have been examples of LoRA with other architectures, such as convolutional neural networks (Dutt et al., 2023; Zhong et al., 2024; Aleem et al., 2024), LoRA has been primarily used for transformer models.
+- The beauty of LoRA is that while its performance depends on its rank, studies have shown that a small r, such as between 4 and 64, is usually sufficient for many use cases. A smaller r means fewer LoRA parameters, which translates to a lower memory footprint.
+- The LoRA authors observed that, to their surprise, increasing the value of r doesn’t increase finetuning performance. This observation is consistent with Databricks’ report that “increasing r beyond a certain value may not yield any discernible increase in quality of model output” (Sooriyarachchi, 2023).25 Some argue that a higher r might even hurt as it can lead to overfitting. However, in some cases, a higher rank might be necessary. Raschka (2023) found that r = 256 achieved the best performance on his tasks.
+
+Serving LoRA adapters
+
+- LoRA not only lets you finetune models using less memory and data, but it also simplifies serving multiple models due to its modularity. To understand this benefit, let’s examine how to serve a LoRA-finetuned model.
+- In general, there are two ways to serve a LoRA-finetuned model:
+  - Merge the LoRA weights A and B into the original model to create the new matrix Wʹ prior to serving the finetuned model. Since no extra computation is done during inference, no extra latency is added. 
+  - Keep W, A, and B separate during serving. The process of merging A and B back to W happens during inference, which adds extra latency.
+- The modularity of LoRA adapters means that LoRA adapters can be shared and reused. There are publicly available finetuned LoRA adapters that you can use the way you’d use pre-trained models. You can find them on Hugging Face26 or initiatives like AdapterHub.
+- You might be wondering: “LoRA sounds great, but what’s the catch?” The main drawback of LoRA is that it doesn’t offer performance as strong as full finetuning. It’s also more challenging to do than full finetuning as it involves modifying the model’s implementation, which requires an understanding of the model’s architecture and coding skills. However, this is usually only an issue for less popular base models. PEFT frameworks—such as Hugging Face’s PEFT, Axolotl, unsloth, and LitGPT—likely support LoRA for popular base models right out of the box.
+
+Quantized LoRA
+
+- Rather than trying to reduce LoRA’s number of parameters, you can reduce the memory usage more effectively by quantizing the model’s weights, activations, and/or gradients during finetuning
+
+Model Merging and Multi-Task Finetuning
+
+- If finetuning allows you to create a custom model by altering a single model, model merging allows you to create a custom model by combining multiple models. Model merging offers you greater flexibility than finetuning alone. You can take two available models and merge them together to create a new, hopefully more useful, model. You can also finetune any or all of the constituent models before merging them together.
+- While you don’t have to further finetune the merged model, its performance can often be improved by finetuning. Without finetuning, model merging can be done without GPUs, making merging particularly attractive to indie model developers that don’t have access to a lot of compute.
+- The goal of model merging is to create a single model that provides more value than using all the constituent models separately. The added value can come from improved performance. For example, if you have two models that are good at different things on the same task, you can merge them into a single model that is better than both of them on that task
+- The added value can also come from a reduced memory footprint, which leads to reduced costs. For example, if you have two models that can do different tasks, they can be merged into one model that can do both tasks but with fewer parameters. 
+- One important use case of model merging is multi-task finetuning.
+- Model merging is also appealing when you have to deploy models to devices such as phones, laptops, cars, smartwatches, and warehouse robots. On-device deployment is often challenging because of limited on-device memory capacity. Instead of squeezing multiple models for different tasks onto a device, you can merge these models together into one model that can perform multiple tasks while requiring much less memory.
+- Many model-merging techniques are experimental and might become outdated as the community gains a better understanding of the underlying theory. For this reason, I’ll focus on the high-level merging approaches instead of any individual technique.
+- Model merging approaches differ in how the constituent parameters are combined. Three approaches covered here are summing, layer stacking, and concatenation
+- Summing
+  - This approach involves adding the weight values of constituent models together.
+- Layer stacking
+  - In this approach, you take different layers from one or more models and stack them on top of each other. For example, you might take the first layer from model 1 and the second layer from model 2. This approach is also called passthrough or frankenmerging.
+  - Unlike the merging by summing approach, the merged models resulting from layer stacking typically require further finetuning to achieve good performance.
+  - An interesting use case of layer stacking is model upscaling. Model upscaling is the study of how to create larger models using fewer resources. Sometimes, you might want a bigger model than what you already have, presumably because bigger models give better performance. For example, your team might have originally trained a model to fit on your 40 GB GPU. However, you obtained a new machine with 80 GB, which allows you to serve a bigger model. Instead of training a new model from scratch, you can use layer stacking to create a larger model from the existing model.
+- Concatenation
+  - Instead of adding the parameters of the constituent models together in different manners, you can also concatenate them. The merged component’s number of parameters will be the sum of the number of parameters from all constituent components
+  - Concatenation isn’t recommended because it doesn’t reduce the memory footprint compared to serving different models separately. Concatenation might give better performance, but the incremental performance might not be worth the number of extra parameters
+
+Finetuning Tactics
+
+Finetuning frameworks and base models
+
+- While many things around finetuning—deciding whether to finetune, acquiring data, and maintaining finetuned models—are hard, the actual process of finetuning is more straightforward. There are three things you need to choose: a base model, a finetuning method, and a framework for finetuning.
+- Base models
+  - At the beginning of an AI project, when you’re still exploring the feasibility of your task, it’s useful to start with the most powerful model you can afford. If this model struggles to produce good results, weaker models are likely to perform even worse. If the strongest model meets your needs, you can then explore weaker models, using the initial model as a benchmark for comparison.
+  - For finetuning, the starting models vary for different projects. OpenAI’s finetuning best practices document gives examples of two development paths: the progression path and the distillation path.
+  - The progression path looks like this:
+    - Test your finetuning code using the cheapest and fastest model to make sure the code works as expected.
+    - Test your data by finetuning a middling model. If the training loss doesn’t go down with more data, something might be wrong. 
+    - Run a few more experiments with the best model to see how far you can push performance. 
+    - Once you have good results, do a training run with all models to map out the price/performance frontier and select the model that makes the most sense for your use case.
+  - The distillation path might look as follows:
+    - Start with a small dataset and the strongest model you can afford. Train the best possible model with this small dataset. Because the base model is already strong, it requires less data to achieve good performance. 
+    - Use this finetuned model to generate more training data. 
+    - Use this new dataset to train a cheaper model.
+- Finetuning methods
+  - Recall that adapter techniques like LoRA are cost-effective but typically don’t deliver the same level of performance as full finetuning. If you’re just starting with finetuning, try something like LoRA, and attempt full finetuning later.
+  - Depending on the base model and the task, full finetuning typically requires at least thousands of examples and often many more. PEFT methods, however, can show good performance with a much smaller dataset. If you have a small dataset, such as a few hundred examples, full finetuning might not outperform LoRA.
+  - Take into account how many finetuned models you need and how you want to serve them when deciding on a finetuning method. Adapter-based methods like LoRA allow you to more efficiently serve multiple models that share the same base model. With LoRA, you only need to serve a single full model, whereas full finetuning requires serving multiple full models.
+- Finetuning frameworks
+  - The easiest way to finetune is to use a finetuning API where you can upload data, select a base model, and get back a finetuned model. Like model inference APIs, finetuning APIs can be provided by model providers, cloud service providers, and third-party providers
+  - A limitation of this approach is that you’re limited to the base models that the API supports. Another limitation is that the API might not expose all the knobs you can use for optimal finetuning performance. Finetuning APIs are suitable for those who want something quick and easy, but they might be frustrating for those who want more customization.
+  - You can also finetune using one of many great finetuning frameworks available, such as LLaMA-Factory, unsloth, PEFT, Axolotl, and LitGPT. They support a wide range of finetuning methods, especially adapter-based techniques. If you want to do full finetuning, many base models provide their open source training code on GitHub that you can clone and run with your own data. Llama Police has a more comprehensive and up-to-date list of finetuning frameworks and model repositories.
+  - If you do only adapter-based techniques, a mid-tier GPU might suffice for most models. If you need more compute, you can choose a framework that integrates seamlessly with your cloud provider.
+  - To finetune a model using more than one machine, you’ll need a framework that helps you do distributed training, such as DeepSpeed, PyTorch Distributed, and ColossalAI.
+- Finetuning hyperparameters
+  - Depending on the base model and the finetuning method, there are many hyperparameters you can tune to improve finetuning efficiency. For specific hyperparameters for your use case, check out the documentation of the base model or the finetuning framework you use. Here, I’ll cover a few important hyperparameters that frequently appear.
+  - Learning rate
+    - The learning rate determines how fast the model’s parameters should change with each learning step. If you think of learning as finding a path toward a goal, the learning rate is the step size. If the step size is too small, it might take too long to get to the goal. If the step size is too big, you might overstep the goal, and, hence, the model might never converge.
+    - A universal optimal learning rate doesn’t exist. You’ll have to experiment with different learning rates, typically between the range of 1e-7 to 1e-3, to see which one works best. A common practice is to take the learning rate at the end of the pre-training phase and multiply it with a constant between 0.1 and 1.
+    - The loss curve can give you hints about the learning rate. If the loss curve fluctuates a lot, it’s likely that the learning rate is too big. If the loss curve is stable but takes a long time to decrease, the learning is likely too small. Increase the learning rate as high as the loss curve remains stable.
+  - Batch size
+    - The batch size determines how many examples a model learns from in each step to update its weights. A batch size that is too small, such as fewer than eight, can lead to unstable training.36 A larger batch size helps aggregate the signals from different examples, resulting in more stable and reliable updates.
+    - In general, the larger the batch size, the faster the model can go through training examples. However, the larger the batch size, the more memory is needed to run your model. Thus, batch size is limited by the hardware you use.
+    - As of this writing, compute is still a bottleneck for finetuning. Often, models are so large, and memory is so constrained, that only small batch sizes can be used. This can lead to unstable model weight updates. To address this, instead of updating the model weights after each batch, you can accumulate gradients across several batches and update the model weights once enough reliable gradients are accumulated. This technique is called gradient accumulation
+  - Number of epochs
+    - An epoch is a pass over the training data. The number of epochs determines how many times each training example is trained on.
+    - Small datasets may need more epochs than large datasets. For a dataset with millions of examples, 1–2 epochs might be sufficient. A dataset with thousands of examples might still see performance improvement after 4–10 epochs.
+    - The difference between the training loss and the validation loss can give you hints about epochs. If both the training loss and the validation loss still steadily decrease, the model can benefit from more epochs (and more data). If the training loss still decreases but the validation loss increases, the model is overfitting to the training data, and you might try lowering the number of epochs.
+  - Prompt loss weight
+    - For instruction finetuning, each example consists of a prompt and a response, both of which can contribute to the model’s loss during training. During inference, however, prompts are usually provided by users, and the model only needs to generate responses. Therefore, response tokens should contribute more to the model’s loss during training than prompt tokens.
+    - The prompt model weight determines how much prompts should contribute to this loss compared to responses. If this weight is 100%, prompts contribute to the loss as much as responses, meaning that the model learns equally from both. If this weight is 0%, the model learns only from responses. Typically, this weight is set to 10% by default, meaning that the model should learn some from prompts but mostly from responses.
 
 ### Summary
+
+- Outside of the evaluation chapters, finetuning has been the most challenging chapter to write. It touched on a wide range of concepts
+- The process of finetuning itself isn’t hard. Many finetuning frameworks handle the training process for you. These frameworks can even suggest common finetuning methods with sensible default hyperparameters.
+- However, the context surrounding finetuning is complex. It starts with whether you should even finetune a model. This chapter started with the reasons for finetuning and the reasons for not finetuning. It also discussed one question that I have been asked many times: when to finetune and when to do RAG.
+- In its early days, finetuning was similar to pre-training—both involved updating the model’s entire weights. However, as models increased in size, full finetuning became impractical for most practitioners. The more parameters to update during finetuning, the more memory finetuning needs. Most practitioners don’t have access to sufficient resources (hardware, time, and data) to do full finetuning with foundation models.
+- Many finetuning techniques have been developed with the same motivation: to achieve strong performance on a minimal memory footprint
+- A comment I often hear from practitioners is that finetuning is easy, but getting data for finetuning is hard. Obtaining high-quality annotated data, especially instruction data, is challenging. The next chapter will dive into these challenges.
+
+
