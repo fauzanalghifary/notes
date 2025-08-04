@@ -87,8 +87,80 @@ Finetuning and RAG
 ### Memory Bottlenecks
 
 - Because finetuning is memory-intensive, many finetuning techniques aim to minimize their memory footprint. Understanding what causes this memory bottleneck is necessary to understand why and how these techniques work. This understanding, in turn, can help you select a finetuning method that works best for you.
-- 
+- Besides explaining finetuning’s memory bottleneck, this section also introduces formulas for back-of-the-napkin calculation of the memory usage of each model. This calculation is useful in estimating what hardware you’d need to serve or finetune a model.
+- If you decide to skip this section, here are a few key takeaways. If you find any of these takeaways unfamiliar, the concepts in this section should help explain it:
+  - Because of the scale of foundation models, memory is a bottleneck for working with them, both for inference and for finetuning. The memory needed for finetuning is typically much higher than the memory needed for inference because of the way neural networks are trained.
+  - The key contributors to a model’s memory footprint during finetuning are its number of parameters, its number of trainable parameters, and its numerical representations.
+  - The more trainable parameters, the higher the memory footprint
+  - Quantization refers to the practice of converting a model from a format with more bits to a format with fewer bits. Quantization is a straightforward and efficient way to reduce a model’s memory footprint.
+  - Inference is typically done using as few bits as possible, such as 16 bits, 8 bits, and even 4 bits.
+  - Training is more sensitive to numerical precision, so it’s harder to train a model in lower precision. Training is typically done in mixed precision, with some operations done in higher precision (e.g., 32-bit) and some in lower precision (e.g., 16-bit or 8-bit).
+
+Backpropagation and Trainable Parameters
+
+- A key factor that determines a model’s memory footprint during finetuning is its number of trainable parameters. A trainable parameter is a parameter that can be updated during finetuning. During pre-training, all model parameters are updated. During inference, no model parameters are updated. During finetuning, some or all model parameters may be updated. The parameters that are kept unchanged are frozen parameters.
+- The memory needed for each trainable parameter results from the way a model is trained. As of this writing, neural networks are typically trained using a mechanism called backpropagation
+- With backpropagation, each training step consists of two phases:
+  - Forward pass: the process of computing the output from the input.
+  - Backward pass: the process of updating the model’s weights using the aggregated signals from the forward pass.
+- During inference, only the forward pass is executed. During training, both passes are executed.
+- At a high level, the backward pass works as follows:
+  - Compare the computed output from the forward pass against the expected output (ground truth). If they are different, the model made a mistake, and the parameters need to be adjusted. The difference between the computed output and the expected output is called the loss.
+  - Compute how much each trainable parameter contributes to the mistake. This value is called the gradient.
+  - Adjust trainable parameter values using their corresponding gradient. How much each parameter should be readjusted, given its gradient value, is determined by the optimizer.
+- During the backward pass, each trainable parameter comes with additional values, its gradient, and its optimizer states. Therefore, the more trainable parameters there are, the more memory is needed to store these additional values.
+
+Memory Math
+
+- It’s useful to know how much memory a model needs so that you can use the right hardware for it
+
+Memory needed for inference
+
+- During inference, only the forward pass is executed. The forward pass requires memory for the model’s weights. Let N be the model’s parameter count and M be the memory needed for each parameter; the memory needed to load the model’s parameters is: N x M
+- N × M × 1.2
+- Consider a 13B-parameter model. If each parameter requires 2 bytes, the model’s weights will require 13B × 2 bytes = 26 GB. The total memory for inference will be 26 GB × 1.2 = 31.2 GB.
+
+Memory needed for training
+
+- To train a model, you need memory for the model’s weights and activations, which has already been discussed. Additionally, you need memory for gradients and optimizer states, which scales with the number of trainable parameters.
+- Training memory = model weights + activations + gradients + optimizer states
+
+Numerical Representations
+
+- Numerical values in neural networks are traditionally represented as float numbers.
+- While FP64 is still used in many computations—as of this writing, FP64 is the default format for NumPy and pandas—it’s rarely used in neural networks because of its memory footprint. FP32 and FP16 are more common
+- Numbers can also be represented as integers. Even though not yet as common as floating formats, integer representations are becoming increasingly popular.
+- The right format for you depends on the distribution of numerical values of your workload (such as the range of values you need), how sensitive your workload is to small numerical changes, and the underlying hardware
+
+Quantization
+
+- The fewer bits needed to represent a model’s values, the lower the model’s memory footprint will be. A 10B-parameter model in a 32-bit format requires 40 GB for its weights, but the same model in a 16-bit format will require only 20 GB. Reducing precision, also known as quantization, is a cheap and extremely effective way to reduce a model’s memory footprint. It’s straightforward to do and generalizes over tasks and architecture
+- What to quantize
+  - Ideally, you want to quantize whatever is consuming most of your memory, but it also depends on what you can quantize without hurting performance too much
+- When to quantize
+  - Quantization can happen during training or post-training. Post-training quantization (PTQ) means quantizing a model after it’s been fully trained. PTQ is by far the most common. It’s also more relevant to AI application developers who don’t usually train models.
+
+- It’s also possible to have different phases of training in different precision levels. For example, a model can be trained in higher precision but finetuned in lower precision. This is especially common with foundation models, where the team training a model from scratch might be an organization with sufficient compute for higher precision training. Once the model is published, developers with less compute access can finetune that model in lower precision.
 
 ### Finetuning Techniques
+
+Parameter-Efficient Finetuning
+
+- In the early days of finetuning, models were small enough that people could finetune entire models. This approach is called full finetuning. In full finetuning, the number of trainable parameters is exactly the same as the number of parameters.
+- Full finetuning can look similar to training. The main difference is that training starts with randomized model weights, whereas finetuning starts with model weights that have been previously trained.
+- We also haven’t touched on the fact that full finetuning, especially supervised finetuning and preference finetuning, typically requires a lot of high-quality annotated data that most people can’t afford. Due to the high memory and data requirements of full finetuning, people started doing partial finetuning.
+- n partial finetuning, only some of the model’s parameters are updated. For example, if a model has ten layers, you might freeze the first nine layers and finetune only the last layer,22 reducing the number of trainable parameters to 10% of full finetuning.
+- While partial finetuning can reduce the memory footprint, it’s parameter-inefficient. Partial finetuning requires many trainable parameters to achieve performance close to that of full finetuning
+- This brings up the question: How to achieve performance close to that of full finetuning while using significantly fewer trainable parameters? Finetuning techniques resulting from this quest are parameter-efficient
+- There’s no clear threshold that a finetuning method has to pass to be considered parameter-efficient. However, in general, a technique is considered parameter-efficient if it can achieve performance close to that of full finetuning while using several orders of magnitude fewer trainable parameters.
+- During finetuning, they kept the model’s original parameters unchanged and only updated the adapters. The number of trainable parameters is the number of parameters in the adapters. On the GLUE benchmark, they achieved a performance within 0.4% of full finetuning using only 3% of the number of trainable parameters
+- However, the downside of this approach is that it increases the inference latency of the finetuned model. The adapters introduce additional layers, which add more computational steps to the forward pass, slowing inference.
+- PEFT enables finetuning on more affordable hardware, making it accessible to many more developers. PEFT methods are generally not only parameter-efficient but also sample-efficient. While full finetuning may need tens of thousands to millions of examples to achieve notable quality improvements, some PEFT methods can deliver strong performance with just a few thousand examples.
+- Given PEFT’s obvious appeal, PEFT techniques are being rapidly developed. The next section will give an overview of these techniques before diving deeper into the most common PEFT technique: LoRA.
+
+PEFT techniques
+
+- 
+
 
 ### Summary
