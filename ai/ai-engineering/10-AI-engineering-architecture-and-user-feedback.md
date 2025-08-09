@@ -112,12 +112,75 @@ Metrics
 - Before listing what metrics to track, it’s important to understand what failure modes you want to catch and design your metrics around these failures. For example, if you don’t want your application to hallucinate, design metrics that help you detect hallucinations. One relevant metric might be whether an application’s output can be inferred from the context.
 - Because foundation models can generate open-ended outputs, there are many ways things can go wrong. Metrics design requires analytical thinking, statistical knowledge, and, often, creativity. Which metrics you should track are highly application-specific.
 - The easiest types of failures to track are format failures because they are easy to notice and verify. For example, if you expect JSON outputs, track how often the model outputs invalid JSON and, among these invalid JSON outputs, how many can be easily fixed (missing a closing bracket is easy to fix, but missing expected keys is harder).
-- 
+- For open-ended generations, consider monitoring factual consistency and relevant generation quality metrics such as conciseness, creativity, or positivity. Many of these metrics can be computed using AI judges.
+- Model quality can also be inferred through user natural language feedback and conversational signals. For example, some easy metrics you can track include the following:
+  - How often do users stop a generation halfway? 
+  - What’s the average number of turns per conversation? 
+  - What’s the average number of tokens per input? Are users using your application for more complex tasks, or are they learning to be more concise with their prompts? 
+  - What’s the average number of tokens per output? Are some models more verbose than others? Are certain types of queries more likely to result in lengthy answers? 
+  - What’s the model’s output token distribution? How has it changed over time? Is the model getting more or less diverse?
+- Length-related metrics are also important for tracking latency and costs, as longer contexts and responses typically increase latency and incur higher costs.
+- Each component in an application pipeline has its own metrics. For example, in a RAG application, the retrieval quality is often evaluated using context relevance and context precision. A vector database can be evaluated by how much storage it needs to index the data and how long it takes to query the data.
+- Given that you’ll likely have multiple metrics, it’s useful to measure how these metrics correlate to each other and, especially, to your business north star metrics, which can be DAU (daily active user), session duration (the length of time a user spends actively engaged with the application), or subscriptions. Metrics that are strongly correlated to your north star might give you ideas on how to improve your north star. Metrics that are not at all correlated might also give you ideas on what not to optimize for.
+- Tracking latency is essential for understanding the user experience
+- You’ll also want to track costs. Cost-related metrics are the number of queries and the volume of input and output tokens, such as tokens per second (TPS). If you use an API with rate limits, tracking the number of requests per second is important to ensure you stay within your allocated limits and avoid potential service interruptions.
+- When calculating metrics, you can choose between spot checks and exhaustive checks. Spot checks involve sampling a subset of data to quickly identify issues, while exhaustive checks evaluate every request for a comprehensive performance view. The choice depends on your system’s requirements and available resources, with a combination of both providing a balanced monitoring strategy.
+- When computing metrics, ensure they can be broken down by relevant axes, such as users, releases, prompt/chain versions, prompt/chain types, and time. This granularity helps in understanding performance variations and identifying specific issues.
 
+Logs and traces
+- Metrics are typically aggregated. They condense information from events that occur in your system over time. They help you understand, at a glance, how your system is doing. However, there are many questions that metrics can’t help you answer. For example, after seeing a spike in a specific activity, you might wonder: “Has this happened before?” Logs can help you answer this question.
+- If metrics are numerical measurements representing attributes and events, logs are an append-only record of events. In production, a debugging process might look like this:
+  - Metrics tell you something went wrong five minutes ago, but they don’t tell you what happened. 
+  - You look at the logs of events that took place around five minutes ago to figure out what happened. 
+  - Correlate the errors in the logs to the metrics to make sure that you’ve identified the right issue.
+- For fast detection, metrics need to be computed quickly. For fast response, logs need to be readily available and accessible. If your logs are 15 minutes delayed, you will have to wait for the logs to arrive to track down an issue that happened 5 minutes ago.
+- Because you don’t know exactly what logs you’ll need to look at in the future, the general rule for logging is to log everything. Log all the configurations, including the model API endpoint, model name, sampling settings (temperature, top-p, top-k, stopping condition, etc.), and the prompt template.
+- Log the user query, the final prompt sent to the model, the output, and the intermediate outputs. Log if it calls any tool. Log the tool outputs. Log when a component starts, ends, when something crashes, etc. When recording a piece of log, make sure to give it tags and IDs that can help you know where this log comes from in the system.
+- Logging everything means that the amount of logs you have can grow very quickly. Many tools for automated log analysis and log anomaly detection are powered by AI.
+- If logs are a series of disjointed events, traces are reconstructed by linking related events together to form a complete timeline of a transaction or process, showing how each step connects from start to finish. In short, a trace is the detailed recording of a request’s execution path through various system components and services.
+- In an AI application, tracing reveals the entire process from when a user sends a query to when the final response is returned, including the actions the system takes, the documents retrieved, and the final prompt sent to the model. It should also show how much time each step takes and its associated cost, if measurable
+- Ideally, you should be able to trace each query’s transformation step-by-step through the system. If a query fails, you should be able to pinpoint the exact step where it went wrong: whether it was incorrectly processed, the retrieved context was irrelevant, or the model generated a wrong response.
 
+Drift detection
+- The more parts a system has, the more things that can change. In an AI application these can be:
+  - System prompt changes
+    - A simple logic should be sufficient to catch when your application’s system prompt changes.
+  - User behavior changes
+    - Over time, users adapt their behaviors to the technology. For example, people have already figured out how to frame their queries to get better results on Google Search or how to make their articles rank higher on search results.
+    - It’s likely that your users will change their behaviors to get better results out of your application. For example, your users might learn to write instructions to make the responses more concise. This might cause a gradual drop in response length over time. If you look only at metrics, it might not be obvious what caused this gradual drop. You need investigations to understand the root cause.
+  - Underlying model changes
+    - When using a model through an API, it’s possible that the API remains unchanged while the underlying model is updated
 
+AI Pipeline Orchestration
+
+- An AI application can get fairly complex, consisting of multiple models, retrieving data from many databases, and having access to a wide range of tools. An orchestrator helps you specify how these different components work together to create an end-to-end pipeline. It ensures that data flows seamlessly between components. At a high level, an orchestrator operates in two steps, components definition and chaining:
+  - Components definition
+    - You need to tell the orchestrator what components your system uses, including different models, external data sources for retrieval, and tools that your system can use
+    - You can also tell the orchestrator if you use any tools for evaluation and monitoring.
+  - Chaining
+    - Chaining is basically function composition: it combines different functions (components) together. In chaining (pipelining), you tell the orchestrator the steps your system takes from receiving the user query until completing the task. Here’s an example of the steps:
+      - Process the raw query. 
+      - Retrieve the relevant data based on the processed query. 
+      - Combine the original query and the retrieved data to create a prompt in the format expected by the model. 
+      - The model generates a response based on the prompt. 
+      - Evaluate the response. 
+      - If the response is considered good, return it to the user. If not, route the query to a human operator.
+- The orchestrator is responsible for passing data between components. It should provide toolings that help ensure that the output from the current step is in the format expected by the next step. Ideally, it should notify you when this data flow is disrupted due to errors such as component failures or data mismatch failures.
+- An AI pipeline orchestrator is different from a general workflow orchestrator, like Airflow or Metaflow.
+- When designing the pipeline for an application with strict latency requirements, try to do as much in parallel as possible
+- There are many AI orchestration tools, including LangChain, LlamaIndex, Flowise, Langflow, and Haystack. Because retrieval and tool use are common application patterns, many RAG and agent frameworks are also orchestration tools.
+- While it’s tempting to jump straight to an orchestration tool when starting a project, you might want to start building your application without one first. Any external tool brings additional complexity. An orchestrator can abstract away critical details of how your system works, making it hard to understand and debug your system.
+- As you advance to the later stages of your application development process, you might decide that an orchestrator can make your life easier. Here are three aspects to keep in mind when evaluating orchestrators:
+  - Integration and extensibility
+    - Evaluate whether the orchestrator supports the components you’re already using or might adopt in the future.
+    - Given how many models, databases, and frameworks there are, it’s impossible for an orchestrator to support everything. Therefore, you’ll also need to consider an orchestrator’s extensibility. If it doesn’t support a specific component, how hard is it to change that?
+  - Support for complex pipelines
+    - As your applications grow in complexity, you might need to manage intricate pipelines involving multiple steps and conditional logic. An orchestrator that supports advanced features like branching, parallel processing, and error handling will help you manage these complexities efficiently.
+  - Ease of use, performance, and scalability
+    - Look for intuitive APIs, comprehensive documentation, and strong community support, as these can significantly reduce the learning curve for you and your team. Avoid orchestrators that initiate hidden API calls or introduce latency to your applications. Additionally, ensure that the orchestrator can scale effectively as the number of applications, developers, and traffic grows.
 
 ### User Feedback
 
+- 
 
 ### Summary
