@@ -181,6 +181,104 @@ AI Pipeline Orchestration
 
 ### User Feedback
 
-- 
+- User feedback has always played a critical role in software applications in two key ways: evaluating the application’s performance and informing its development. 
+- However, in AI applications, user feedback takes on an even more significant role. User feedback is proprietary data, and data is a competitive advantage. A well-designed user feedback system is necessary to create the data flywheel discussed in Chapter8.
+- User feedback can be used not only to personalize models for individual users but also to train future iterations of the models. As data becomes increasingly scarce, proprietary data is more valuable than ever. A product that launches quickly and attracts users early can gather data to continually improve models, making it difficult for competitors to catch up.
+
+Extracting Conversational Feedback
+
+- Traditionally, feedback can be explicit or implicit. Explicit feedback is information users provide in response to explicit requests for feedback in the application, such as thumbs up/thumbs down, upvote/downvote, star rating, or a yes/no answer to the question
+- Implicit feedback is information inferred from user actions. For example, if someone buys a product recommended to them, it means it was a good recommendation. What can be considered implicit feedback depends on what actions a user can do within each application and is, therefore, highly application-dependent. Foundation models enable a new world of applications and, with them, many genres of implicit feedback.
+- The conversational interface that many AI applications use makes it easier for users to give feedback. Users can encourage good behaviors and correct errors the same way they would give feedback in daily dialogues. The language that a user uses to give directions to AI can convey feedback about both the application’s performance and the user’s preference.
+- User feedback, extracted from conversations, can be used for evaluation, development, and personalization:
+  - Evaluation: derive metrics to monitor the application 
+  - Development: train the future models or guide their development 
+  - Personalization: personalize the application to each user
+- Implicit conversational feedback can be inferred from both the content of user messages and their patterns of communication. Because feedback is blended into daily conversations, it’s also challenging to extract. While intuition about conversational cues can help you devise an initial set of signals to look for, rigorous data analysis and user studies are necessary to understand.
+- While conversational feedback has enjoyed greater attention thanks to the popularity of conversational bots, it had been an active research area for several years before ChatGPT came out. The reinforcement learning community has been trying to get RL algorithms to learn from natural language feedback since the late 2010s
+
+Natural language feedback
+
+- Feedback extracted from the content of messages is called natural language feedback. Here are a couple of natural language feedback signals that tell you how a conversation is going. It’s useful to track these signals in production to monitor your application’s performance.
+- Early termination
+  - If a user terminates a response early, e.g., stopping a response generation halfway, exiting the app (for web and mobile apps), telling the model to stop (for voice assistants), or simply leaving the agent hanging (e.g., not responding to the agent with which option you want it to go ahead with), it’s likely that the conversation isn’t going well.
+- Error correction
+  - If a user starts their follow-up with “No, …” or “I meant, …”, the model’s response is likely off the mark.
+  - Users can also point out specific things the model should’ve done differently.
+  - This kind of action-correcting feedback is especially common for agentic use cases where users might nudge the agent toward more optional actions
+- Complaints
+  - Often, users just complain about your application’s outputs without trying to correct them. For example, they might complain that an answer is wrong, irrelevant, toxic, lengthy, lacking detail, or just bad
+  - Understanding how the bot fails the user is crucial in making it better. For example, if you know that the user doesn’t like verbose answers, you can change the bot’s prompt to make it more concise. If the user is unhappy because the answer lacks details, you can prompt the bot to be more specific.
+- Sentiment
+  - Complaints can also be general expressions of negative sentiments (frustration, disappointment, ridicule, etc.) without explaining the reason why, such as “Uggh”. This might sound dystopian, but analysis of a user’s sentiments throughout conversations with a bot might give you insights into how the bot is doing
+  - Natural language feedback can also be inferred from the model’s responses. One important signal is the model’s refusal rate. If a model says things like “Sorry, I don’t know that one” or “As a language model, I can’t do …”, the user is probably unhappy.
+
+Other conversational feedback
+
+- Regeneration
+  - Many applications let users generate another response, sometimes with a different model. If a user chooses regeneration, it might be because they’re not satisfied with the first response. However, it might also be that the first response is adequate, but the user wants options to compare. This is especially common with creative requests like image or story generation.
+  - Personally, I often choose regeneration for complex requests to ensure the model’s responses are consistent. If two responses give contradicting answers, I can’t trust either.
+- Conversation organization
+  - The actions a user takes to organize their conversations—such as delete, rename, share, and bookmark—can also be signals. Deleting a conversation is a pretty strong signal that the conversation is bad, unless it’s an embarrassing conversation and the user wants to remove its trace. Renaming a conversation suggests that the conversation is good, but the auto-generated title is bad.
+- Conversation length
+  - Another commonly tracked signal is the number of turns per conversation. Whether this is a positive or negative signal depends on the application. For AI companions, a long conversation might indicate that the user enjoys the conversation. However, for chatbots geared toward productivity like customer support, a long conversation might indicate that the bot is inefficient in helping users resolve their issues.
+- Dialogue diversity
+  - Conversation length can also be interpreted together with dialogue diversity, which can be measured by the distinct token or topic count. For example, if the conversation is long but the bot keeps repeating a few lines, the user might be stuck in a loop.
+- Explicit feedback is easier to interpret, but it demands extra effort from users. Since many users may not be willing to put in this additional work, explicit feedback can be sparse, especially in applications with smaller user bases. Explicit feedback also suffers from response biases. For example, unhappy users might be more likely to complain, causing the feedback to appear more negative than it is.
+- Implicit feedback is more abundant—what can be considered implicit feedback is limited only by your imagination—but it’s noisier. Interpreting implicit signals can be challenging
+- It’s important to study your users to understand why they do each action.
+
+Feedback Design
+
+When to collect feedback
+- Feedback can and should be collected throughout the user journey. Users should have the option to give feedback, especially to report errors, whenever this need arises. The feedback collection option, however, should be nonintrusive. It shouldn’t interfere with the user workflow.
+- In the beginning
+  - When a user has just signed up, user feedback can help calibrate the application for the user
+  - For other applications, however, initial feedback should be optional, as it creates friction for users to try out your product. If a user doesn’t specify their preference, you can fall back to a neutral option and calibrate over time.
+- When something bad happens
+  - When the model hallucinates a response, blocks a legitimate request, generates a compromising image, or takes too long to respond, users should be able to notify you of these failures. You can give users the option to downvote a response, regenerate with the same model, or change to another model. Users might just give conversational feedback like “You’re wrong”, “Too cliche”, or “I want something shorter”.
+  - Ideally, when your product makes mistakes, users should still be able to accomplish their tasks. For example, if the model wrongly categorizes a product, users can edit the category. Let users collaborate with the AI. If that doesn’t work, let them collaborate with humans. Many customer support bots offer to transfer users to human agents if the conversation drags on or if users seem frustrated.
+  - An example of human–AI collaboration is the inpainting functionality for image generation.9 If a generated image isn’t exactly what the user needs, they can select a region of the image and describe with a prompt how to make it better.
+- When the model has low confidence
+  - When a model is uncertain about an action, you can ask the user for feedback to increase its confidence. For example, given a request to summarize a paper, if the model is uncertain whether the user would prefer a short, high-level summary or a detailed section-by-section summary, the model can output both summaries side by side, assuming that generating two summaries doesn’t increase the latency for the user. The user can choose which one they prefer. Comparative signals like this can be used for preference finetuning
+  - You might wonder: how about feedback when something good happens? Actions that users can take to express their satisfaction include thumbs up, favoriting, or sharing. However, Apple’s human interface guideline warns against asking for both positive and negative feedback. Your application should produce good results by default. Asking for feedback on good results might give users the impression that good results are exceptions. Ultimately, if users are happy, they continue using your application.
+  - However, many people I’ve talked to believe users should have the option to give feedback when they encounter something amazing. A product manager for a popular AI-powered product mentioned that their team needs positive feedback because it reveals the features users love enough to give enthusiastic feedback about. This allows the team to concentrate on refining a small set of high-impact features rather than spreading resources across many with minimal added value.
+
+How to collect feedback
+- Feedback should seamlessly integrate into the user’s workflow. It should be easy for users to provide feedback without extra work. Feedback collection shouldn’t disrupt user experience and should be easy to ignore. There should be incentives for users to give good feedback.
+- One example often cited as good feedback design is from the image generator app Midjourney. For each prompt, Midjourney generates a set of (four) images and gives the user the following options
+  - Generate an unscaled version of any of these images. 
+  - Generate variations for any of these images. 
+  - Regenerate.
+- All these options give Midjourney different signals. Options 1 and 2 tell Midjourney which of the four photos is considered by the user to be the most promising. Option 1 gives the strongest positive signal about the chosen photo. Option 2 gives a weaker positive signal. Option 3 signals that none of the photos is good enough. However, users might choose to regenerate even if the existing photos are good just to see what else is possible.
+- The feedback alone might be helpful for product analytics. For example, seeing just the thumbs up/thumbs down information is useful for calculating how often people are happy or unhappy with your product. For deeper analysis, though, you would need context around the feedback, such as the previous 5 to 10 dialogue turns. This context can help you figure out what went wrong. However, getting this context might not be possible without explicit user consent, especially if the context might contain personally identifiable information.
+- Don’t ask users to do the impossible. For example, if you collect comparative signals from users, don’t ask them to choose between two options they don’t understand.
+- Add icons and tooltips to an option if they help people understand it. Avoid a design that can confuse users. Ambiguous instructions can lead to noisy feedback. I once hosted a GPU optimization workshop, using Luma to collect feedback. When I was reading the negative feedback, I was confused. Even though the responses were positive, the star ratings were 1/5. When I dug deeper, I realized that Luma used emojis to represent numbers in their feedback collection form, but the angry emoji, corresponding to a one-star rating, was put where the five-star rating should b
+
+Feedback Limitations
+- Leniency bias
+  - Leniency bias is the tendency for people to rate items more positively than warranted, often to avoid conflict because they feel compelled to be nice or because it’s the easiest option
+  - If you want more granular feedback, removing the strong negative connotation associated with low ratings can help people break out of this bias. For example, instead of showing users numbers one to five, show users options such as the following:
+    - “Great ride. Great driver.” 
+    - “Pretty good.” 
+    - “Nothing to complain about but nothing stellar either.” 
+    - “Could’ve been better.” 
+    - “Don’t match me with this driver again.”
+- Randomness
+  - Users often provide random feedback, not out of malice, but because they lack motivation to give more thoughtful input
+- Position bias
+  - The position in which an option is presented to users influences how this option is perceived. Users are generally more likely to click on the first suggestion than the second. If a user clicks on the first suggestion, this doesn’t necessarily mean that it’s a good suggestion.
+  - When designing your feedback system, this bias can be mitigated by randomly varying the positions of your suggestions or by building a model to compute a suggestion’s true success rate based on its position.
+- Preference bias
+  - Many other biases can affect a person’s feedback, some of which have been discussed in this book. For example, people might prefer the longer response in a side-by-side comparison, even if the longer response is less accurate—length is easier to notice than inaccuracies
+- It’s important to inspect your user feedback to uncover its biases. Understanding these biases will help you interpret the feedback correctly, avoiding misleading product decisions.
+
+Degenerate feedback loop
+- In a system where user feedback is used to modify a model’s behavior, degenerate feedback loops can arise. A degenerate feedback loop can happen when the predictions themselves influence the feedback, which, in turn, influences the next iteration of the model, amplifying initial biases.
+- Imagine you’re building a system to recommend videos. The videos that rank higher show up first, so they get more clicks, reinforcing the system’s belief that they’re the best picks. Initially, the difference between the two videos, A and B, might be minor, but because A was ranked slightly higher, it got more clicks, and the system kept boosting it. Over time, A’s ranking soared, leaving B behind. This feedback loop is why popular videos stay popular, making it tough for new ones to break through. This issue is known as “exposure bias,” “popularity bias,” or “filter bubbles,” and it’s a well-studied problem.
+- Acting on user feedback can also turn a conversational agent into, for lack of a better word, a liar. Multiple studies have shown that training a model on user feedback can teach it to give users what it thinks users want, even if that isn’t what’s most accurate or beneficial 
+- User feedback is crucial for improving user experience, but if used indiscriminately, it can perpetuate biases and destroy your product. Before incorporating feedback into your product, make sure that you understand the limitations of this feedback and its potential impact.
 
 ### Summary
+
+- If each previous chapter focused on a specific aspect of AI engineering, this chapter looked into the process of building applications on top of foundation models as a whole.
