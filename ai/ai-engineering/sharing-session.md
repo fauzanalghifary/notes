@@ -28,9 +28,11 @@
 
 ## 3. Eval and Observability
 
-## 4. Prompt Engineering
+## 4. Choosing A Model
 
-## 5. Tool Calling
+## 5. Prompt Engineering
+
+## 6. Tool Calling
 
 ## Closing
 
@@ -42,6 +44,7 @@
 ### Docs
 
 - https://platform.openai.com/docs
+- https://cookbook.openai.com/
 - https://ai.google.dev/gemini-api/docs
 - https://docs.anthropic.com/en/docs
 - https://ai-sdk.dev/docs
