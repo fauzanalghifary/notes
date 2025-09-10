@@ -2,89 +2,90 @@
 
 # 0. AI Engineering
 
+## 1st Page
+
 - Thank you. 
 - AI Engineering.
+
+## Intro Page
 
 - Loosely based on AI Engineering book (Chip Huyen)
 - Integrating AI
 - Consider when integrating AI
-- Popular Book
+- Popular book
+
+## Sharing Session
 
 - 5 Sections
 - Reverse order
+- long and short
 - Disclaimer: not expert
 
 # 1. Demo Session
 
 ## TITLE PAGE
 
-- Apply Knowledge
+- Apply knowledge
 - Prototype
 - Extension
 - The idea
 
-## GEOGUESSR SESSION
-
-## what's geoguessr
+## What's Geoguessr
 
 - Geoguessr!
 - Web
-- Some of you know. Learner.
-- Simple. Spawn => Guess.
+- Some of you know. 
+  - Learner.
+- Simple. 
+  - Spawn => Guess.
 
-## let's play
+## Let's Play
 
+- 3 Game Mode.
+  - No Move.
 - More context.
 - Let's play!
 - 5-7 minutes.
-- 3 Game Mode.
-  - No Move.
-- Still learning. Easy round.
+- Still learning. 
+  - Easy round.
+  - Decent guess
 
-## playing
+## While Playing
 
-- Collecting the clues.
-- Road lines, Poles, Sun, House, Infra, etc.
+- What we usually do is just collecting the clues from what we can see here.
+- Sun, road lines, poles, house, infra, vibes, etc.
+- 50% of my power is by looking at the sun.
 - 5 to 7 minutes later …
 
-## how to get better
+## How to Get Better
 
 - 2 ways to getting better at the game
   - plays a lot => took a lot of time
   - plonkit => tedious and less fun
 - Combine both!
-
-## open extension!
-
+- OPEN THE EXTENSION!
 - Competitive duel vs Solo session
-- NMPZ!
-
-## explain the extension
-
-- 5 Sections
+  - NMPZ!
 
 ## Possible Country and Possible Region
 
-- 99% correct.
-- Not because the AI is that good => because of the input
-- Langfuse
-  - Will talk more when we discuss Eval and Observability.
-  - 6 data
-  - intercepting network request.
-  - also image.
+- READ.
+- See Maps.
 
 ## Visual Clue
 
-- Look at the image => tell me the important part in the image => how it relate to the country and/or region.
+- What this visual clues is doing:
+  - It will look at the image,
+  - and tell me the relevant clues that I need to pay attention
 - READ
-- discuss in tool calling => we'll see why we can't 100% believe the fact that present here.
-- based on experience => help me label things.
-  - Tree name
-  - Pampas Region
-  - Mountain Range in East USA
-- This visual clues here is giving me labels to things that I otherwise will never known.
-- Comparison.
-  - Poland.
+- and based on my experience in the last few weeks, by reading this, I'm getting better at recognizing different region in the country.
+- for example, by reading this section, I know that Poland
+  - It's a flat country
+  - except only in this south border
+  - there is a mountain range there
+  - So if i know I'm in Poland, but I'm in high elevation location, I know for certain that I'm near the south border.
+- This section also contains a lot of comparison, so I can make a better guess next time, by just reading this section.
+- discuss in tool calling => we'll see why we can't 100% believe the sentences here.
 
 ## Trivia
 
@@ -94,18 +95,19 @@
 
 - First 4 sections => skimming
 - The one that I pay most attention: Verified Metas.
-  - Once i got the country code
-  - I have map this to the country name
-  - My app will scrap this plonkit page
-  - LLM will filter among a lot of clues/meta here => which one is relevant to the location
+  - What I did here,
+  - I scrap the plonkit page
+  - It contain a lot of clues in the country
+  - LLM will **filter** among a lot of clues/meta here => which one is relevant to the location
   - Instead of just tediously reading the page.
   - I can just doing some practice here, and then just read this sections here.
   - Now the learning is more is contextual.
 
-## ending
+## Demo Session Epilog
 
+- So What I'm trying here is combining the playing and learning part of it,
+  - so I can keep playing but also at the same time learning something about this location.
 - That's the demo session.
-- The intention is I want to keep playing, but also learning something about the game, so I can getting better faster at this game.
 
 # 2. Eval and Observability
 
@@ -121,7 +123,7 @@
 
 ## Evals Definition
 
-- To page lenny, to vercel page, back to lenny.
+- To page lenny.
 - That's what evals is.
 - We'll see how I implement evals in my chrome extension.
 
@@ -137,7 +139,7 @@
 ## How To Do Evals
 
 - As for now, generally, there are 3 approach of doing evals.
-- Human evals
+- Human evals (SKIP)
   - READ
   - Me.
   - Evaluate the output here. 
@@ -145,20 +147,23 @@
   - And the owner of the app, can collect the data, and make improvements based on those feedback.
   - But the minus here:
     - Costly and time-consuming.
-- Code-based evals
+- Code-based evals (SKIP)
   - READ
   - This is quite similar with traditional unit test that we usually write.
   - Given this input, for example, the output should contain this keyword.
   - But the difference is, as we discuss previously, AI is non-deterministic, so the same input can produce different output.
   - It's more challenging if the tasks is open ended.
-- LLM-based Evals
-  - The approach that getting more popular recently, is LLM-based Evals.
+- LLM-based Evals (GO)
+  - NEED REVISE
+  - This is one approach that getting more popular recently.
+  - READ.
+  - Basically, we use LLM to judge the output of another LLM.
   - So, for example, in my app here, this is the output of the LLM call, right.
   - So, as we'll see shortly, I have another LLM that judges this output. 
-  - This another LLM will judge if this output is what we want or not.
+  - This another LLM will judge if this output is what I want or not.
   - scalable, and also well-suited for open-ended tasks.
 
-## LLM-as-a-Judge (SKIP)
+## LLM-as-a-Judge
 
 - Next 2 pages.
 - These last 2 pages just illustrate that using LLM as a judge is the common practices, a lot of startups do that.
@@ -167,22 +172,17 @@
 ## What's Inside Langfuse
 
 - Langfuse
-  - As we see previously, I use Langfuse here as an observability tools.
+  - I use Langfuse here as an observability tools.
   - And I also use this to do the evals.
 - Before we see the evals
 - Trace
   - This lists all the rounds that have been analyzed by my extension.
   - CLICK ONE.
   - 2 Parallel LLM Request
-  - Latency, Token usage, cost, model
-- I found having trace like this really helpful when I try to develop the application.
-
---- optional (SKIP)
-
-- For example, here I have a reason field, this is not shown in the UI.
-  - Sometimes when I check this section and found something that is a bit off, I check this, and maybe adjust my prompt so it produce better result next time.
-- I also can compare latency and cost when I experimenting with different models.
-- So, yeah, I found that having trace like this really helpful on improving the application.
+    - One for 4 sections
+    - One for verified metas
+  - Input-Output, Latency, Token usage, cost, model
+- I found having trace like this really helpful when I try to develop and improve this application
 
 ## Langfuse Evals
 
@@ -210,15 +210,20 @@
 - So, yeah, that's the evals that I implement on this app.
 - But I can imagine another scenario, for example, I can have an evals to evaluate the factual correctness of each sentence here.
 - We'll talk about tool calling later, but it's possible for example, if judges here utilize web search to verify the correctness of each sentence.
+
+## Goals of Evals 2
+
 - So, there are a lot of possibility here.
 - But the idea is: we put evals on the place that we care about.
-- If I care about the present of comparison here, I can put an eval on that.
+- If I care about the existence of comparison here, I can put an eval on that.
 - If I care about the factual correctness of each sentence here, I can put an eval on that.
-- There are a lot possibility here.
+- There are a lot of possibility here.
 
 ## Langfuse Dataset
 
-- But of course, it's not ideal, to run an eval on each request, because it will be costly.
+- But of course, it's not ideal, to run an eval on each request like what i do here. 
+  - because, for example, if this is on production, with a lot of users, it will be costly to run the evals on each request.
+  - because it's, at the end of the day, just another LLM call.
 - So, from what I heard, the approach that commonly use in a lot of AI startup: instead of running evals on every request, they prepare the datasets.
 - DATASETS MENU. READ.
 - For example, in my app, I can collect like 100-200 locations and then insert it to the datasets.
@@ -228,14 +233,14 @@
 - And then, I can run it every week, or every time I changes the models, or every times I changed the prompt.
 - I can just run the evals on the dataset, and then check the average of the evals score.
 - So, yeah, from what I heard, that's what they usually do:
-  - Everytime they make a changes, either changes a prompt, a model, or the app flow.
+  - Everytime they make a changes, either changes a prompt, a model, or make a new release.
   - They can run the evals on the dataset to check if the AI output still work as expected or not.
 
 ## Evals ending
 
 - That's all about evals.
 - Of course this is depth and broad topic, so I only able to scratching the surface here.
-- Okay, let's move on to the next section.
+- But, let's move on to the next section.
 - The rest of the sections should be much shorter than this section.
 
 # 3. Choosing A Model
@@ -254,32 +259,21 @@
 - This is from Anthropic docs, but the principle generally similar.
 - This doc said that when choosing the models, there are 3 factors that we need to consider: Capabilities, Speed or Latency, and Costs.
 
-## Costs (Claude Docs)
+## Costs
 
-- About cost, this is quite straightforward.
-- One of the nuance about cost is, it's easy to assume we can just see the pricing table and then compare the number here.
-- For example, by looking at this table, we can conclude that Opus 4 will cost 5x times than Sonnet 4 here.
-- the issue is: different model will use different number of token.
-- So that's why the better way to compare the cost is to collect the dataset, like we mention previously.
-- So we can just run the dataset for each model that we want to test, and then we can compare the cost.
 - For my app, I'm not really care about costs, because this app is only for personal use, and I also don't play that much.
 - So what I really care here are: capabilities and latency.
 
 ## Capabilities and Latency (OpenAI Docs)
 
-- About the capabilities, I found that Reasoning Model is produce better output for my app.
+- About the capabilities, I found that Reasoning Model produce better output for my app.
 - GO TO OPENAI DOCS
 - CHECK REASONING MODELS PAGE ON OPENAI DOCS.
 - READ 1ST PARAGRAPH.
-- But the issue with reasoning model is: they have high latency than reasoning model.
+- But the issue with reasoning model is: they have high latency than non-reasoning model.
 - And for my use case here: I need an instant response. So if I use reasoning model, the output is better, but I need to wait longer.
 - And for this specific case, it's not the trade-off that I want to make.
-- MOVE TO BEST PRACTICE.
-- CHECK WHEN TO USE REASONING MODELS.
-- and here is the one that related to my use case: visual reasoning.
-- I got better results using reasoning models.
-- but for my case here, I need instant response, and I also don't mind if the AI give me false-positive.
-- that's why i go to with 4.1
+- that's why I go to with 4.1 which is non-reasoning model.
 - but I can imagine, maybe I can use this tools on competitive duels,
   - not use that for cheating.
   - but maybe analyze my gameplay while I'm playing.
@@ -290,16 +284,9 @@
 
 - So, yeah, when choosing the model, it really depends on the use case in our application.
 - There is also this quote from the book: ...
-- And this is also shows why it's important to have evals in place.
+- And this is also shows why it's important to have evals.
 - to know if this model is suitable or not for our app, we can just run the evals and do the comparison between models there.
-
-## Update models (SKIP)
-
-- lastly, there is research here from Amplify.
-  - How often do you update / change your models.   
-  - The majority here is Monthly and Quarterly.
-- This is, once again, shows why evals is important, because every time we changes the models, we can just try to run the dataset that we have.
-- We can see and compare the capability, the latency, and the cost there.
+  - evals score, latency, cost.
 
 # 4. Prompt Engineering
 
@@ -331,6 +318,9 @@
 - Epilog
   - There are a lot of others tips here related to prompt engineering.
   - BACK TO SLIDE.
+
+## Prompt Tips from The Book
+
 - The book itself mention some tips that I include here:
   - Not all parts of prompt are equal
   - why examples
@@ -344,14 +334,13 @@
   - I use this AI SDK from Vercel.
   - This is really streamlining my process of building AI application.
   - One of the benefit is I can changing the model provider, like OpenAI, Anthropic, Google Gemini, without changing my code too much.
-  - The other benefit is I can just specify the schema here, so the LLM ouput will always follow this structured.
+  - The other benefit is I can just specify the schema here, so the LLM output will always follow this structured.
   - For example.
   - I found that in 99% of the case, it works as expected.
   - So yeah, I think this is really helpful.
 
 # 5. Tool Calling
 
-- This is short section.
 
 ## CLAUDE.AI TOOL CALLING
 
@@ -374,7 +363,7 @@
 - It's similar with: When I read a book, and then someone ask me, about the content of the book.
 - If I don't use any tool calling, I will answer the question based on what is in my head.
 - But I can use tool calling, I can, wait a minute, let me check the book again, or let me check the internet about that, etc.
-- So this illustrate why tool calling is powerful on increasing the accuracy of LLM ouput.
+- So this illustrates why tool calling is powerful on increasing the accuracy of LLM output.
 
 ## Tools Calling Definition
 
@@ -387,7 +376,7 @@
 - For my app, I can imagine Function Calling and Web Search will be useful.
 - Function Calling
   - READ
-  - I can imagine, because as we see previously (LANGFUSE), i got this latitude and langitude right.
+  - I can imagine, because as we see previously (LANGFUSE), I got this latitude and longitude right.
   - So maybe I can create a custom function in my code, that call GoogleMaps API, so I can get the exact City or the exact Province of this location. 
     - So it's no longer prediction.
     - So we can remove the non-deterministic part in this section.
