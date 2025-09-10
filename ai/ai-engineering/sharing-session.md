@@ -18,7 +18,6 @@
 
 - 5 Sections
 - Reverse order
-- long and short
 - Disclaimer: not expert
 
 # 1. Demo Session
@@ -46,7 +45,7 @@
 - More context
 - Let's play!
 - 5-7 minutes
-- Still learning.
+- Still learning
   - Easy round
   - Decent guess
 - RUN STOPWATCH!
@@ -68,8 +67,8 @@
 
 ## Possible Country and Possible Region
 
-- READ.
-- See Maps.
+- READ
+- See Maps
 
 ## Visual Clue
 
@@ -88,20 +87,20 @@
 ## Verified Metas
 
 - First 4 sections => skimming
-- Pay most attention: Verified Metas.
+- Pay most attention: Verified Metas
   - What I did:
     - Scrape plonkit
     - Among many clues => LLM will filter
   - Instead of tediously read, just play
-  - Contextual Learning.
+  - Contextual Learning
 - Play some rounds
   - false positive
 
 ## Demo Session Epilog
 
-- Combine playing and learning.
+- Combine playing and learning
   - Keep playing, but also learning
-- That's the demo session.
+- That's the demo session
 
 # 2. Eval and Observability
 
@@ -141,8 +140,8 @@
 ## LLM-as-a-Judge
 
 - Next 2 pages
-- Common practices
-- Reliable
+  - Common practices
+  - Reliable
 
 ## Langfuse Trace
 
@@ -153,20 +152,19 @@
   - List all rounds
 - CLICK ONE
   - 2 Parallel LLM Request
-  - Input-Output, Latency, Token usage, cost, model
+  - input-output, latency, token usage, cost, model
 - Helpful
 
 ## Langfuse Evals
 
 - 1 Evals on Visual Clues
-- Comparison check evals
-- 1, 0, 0.5
-- llm-as-a-judge
-- GO TO THAT MENU
+  - Comparison check evals
+  - 1, 0, 0.5
+- GO TO llm-as-a-judge
 
 ## Langfuse LLM-as-a-judge
 
-- READ
+- READ PROMPT
 - Important Skill
   - Thailand vs Cambodia
   - North Brazil vs South Brazil
@@ -176,16 +174,16 @@
 - Another scenario: 
   - check factual correctness using web search
 - The idea:
-  - put evals on the place that we care about.
+  - put evals on the place that we care about
 
 ## Langfuse Dataset
 
 - Run evals on each request
-  - not ideal
+  - not ideal in prod
   - costly
 - Prepare the datasets
-- DATASETS MENU. 
-  - READ.
+- DATASETS MENU
+  - READ
 
 ## Langfuse Dataset Geowizr
 
@@ -213,7 +211,7 @@
 
 - Not really care
 - Focus on capabilities and latency
-  - find balance.
+  - find balance
 
 ## Capabilities and Latency (OpenAI Docs)
 
@@ -248,7 +246,7 @@
 ## Prompt Engineering Claude
 
 - Anthropic docs
-- GO TO: CLAUDE 4 BEST PRACTICES IN PROMPT ENGINEERING.
+- GO TO: CLAUDE 4 BEST PRACTICES IN PROMPT ENGINEERING
 
 ## Prompt Engineering Tips
 
