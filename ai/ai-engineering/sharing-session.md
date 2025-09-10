@@ -143,7 +143,7 @@
   - Common practices
   - Reliable
 
-## Langfuse Trace
+## LANGFUSE Trace
 
 - Langfuse
   - Observability
@@ -168,13 +168,9 @@
 - Important Skill
   - Thailand vs Cambodia
   - North Brazil vs South Brazil
-
-## Goals of Evals
-
-- Another scenario: 
-  - check factual correctness using web search
 - The idea:
   - put evals on the place that we care about
+  - I care, I can see the score
 
 ## Langfuse Dataset
 
@@ -227,7 +223,7 @@
 - Using reasoning models on competitive duels
 - Find the one that best for your use case
 
-## On Coosing the Model 
+## On Choosing the Model 
 
 - Quote
 - Why evals
