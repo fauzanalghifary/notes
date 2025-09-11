@@ -283,7 +283,10 @@
 ## CLAUDE.AI TOOL CALLING
 
 - Screenshot
-- Why tool calling powerful
+  - Why tool calling powerful
+- Point: why tool calling is powerful
+  - reduce hallucinations
+  - increasing the accuracy
 
 ## KARPATHY
 
