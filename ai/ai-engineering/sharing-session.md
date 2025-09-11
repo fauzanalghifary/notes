@@ -170,7 +170,6 @@
   - North Brazil vs South Brazil
 - The idea:
   - put evals on the place that we care about
-  - I care, I can see the score
 
 ## Langfuse Dataset
 
@@ -267,16 +266,6 @@
 
 - Tips from the books
   - skimming
-- JSON FORMAT
-  - Structured Output
-  - READ
-  - Solved problem
-- GO TO AI SDK
-  - Vercel
-  - Streamlining
-  - Benefits:
-    - Changing models
-    - Structured output
 
 # 5. Tool Calling
 
