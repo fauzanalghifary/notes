@@ -195,6 +195,8 @@
 
 - Amplify
 - TOP 3
+- Personal
+  - Anthropic
 - Geowizr
   - OPENAI
 
