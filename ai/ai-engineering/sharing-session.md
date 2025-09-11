@@ -169,7 +169,7 @@
   - Thailand vs Cambodia
   - North Brazil vs South Brazil
 - The idea:
-  - put evals on the place that we care about
+  - put evals in the place that we care about
 
 ## Langfuse Dataset
 
