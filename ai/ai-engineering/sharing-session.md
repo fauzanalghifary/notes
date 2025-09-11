@@ -284,7 +284,7 @@
 
 - Screenshot
   - Why tool calling powerful
-- Point: why tool calling is powerful
+- Point: tool calling is powerful
   - reduce hallucinations
   - increasing the accuracy
 
