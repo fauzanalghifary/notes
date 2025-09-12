@@ -45,10 +45,10 @@
 - More context
 - Let's play!
 - 5-7 minutes
+- RUN STOPWATCH!
 - Still learning
   - Easy round
   - Decent guess
-- RUN STOPWATCH!
 
 ## While Playing
 
@@ -280,8 +280,8 @@
 ## KARPATHY
 
 - Why wrong answer?
-- Karpathy
-- Analogy with people reading book
+  - Karpathy
+  - Analogy with people reading book
 
 ## Tools Calling Definition
 
