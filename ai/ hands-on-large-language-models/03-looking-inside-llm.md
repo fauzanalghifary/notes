@@ -29,3 +29,17 @@
 - You may wonder why we go through the trouble of calculating all the token streams if we’re discarding the outputs of all but the last token. The answer is that the calculations of the previous streams are required and used in calculating the final stream. Yes, we’re not using their final output vector, but we use earlier outputs (in each Transformer block) in the Transformer block’s attention mechanism.
 
 ## Speeding Up Generation by Caching Keys and Values
+
+- Recall that when generating the second token, we simply append the output token to the input and do another forward pass through the model. If we give the model the ability to cache the results of the previous calculation (especially some of the specific vectors in the attention mechanism), we no longer need to repeat the calculations of the previous streams. This time the only needed calculation is for the last stream. This is an optimization technique called the keys and values (kv) cache and it provides a significant speedup of the generation process. Keys and values are some of the central components of the attention mechanism
+- This is one reason why LLM APIs stream the output tokens as the model generates them instead of waiting for the entire generation to be completed.
+
+## Inside the Transformer Block
+
+- where the vast majority of processing happens
+- A Transformer block (Figure3-12) is made up of two successive components:
+  - The attention layer is mainly concerned with incorporating relevant information from other input tokens and positions 
+  - The feedforward layer houses the majority of the model’s processing capacity
+
+## The feedforward neural network at a glance
+
+- 
