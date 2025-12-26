@@ -42,4 +42,47 @@
 
 ## The feedforward neural network at a glance
 
+- Memorization is only one ingredient in the recipe of impressive text generation. The model is able to use this same machinery to interpolate between data points and more complex patterns to be able to generalize—which means doing well on inputs it hadn’t seen in the past and were not in its training dataset.
+- This is why the language model is then trained on instruction-tuning and human preference and feedback fine-tuning to match people’s expectations of what the model should output.
+
+## The attention layer at a glance
+
+- Context is vital in order to properly model language. Simple memorization and interpolation based on the previous token can only take us so far. 
+- Attention is a mechanism that helps the model incorporate context as it’s processing a specific token
+
+## Attention is all you need
+
+- The attention mechanism operates on the input vector at that position. It incorporates relevant information from the context into the vector it produces as the output for that position.
+- Two main steps are involved in the attention mechanism:
+  - A way to score how relevant each of the previous input tokens are to the current token being processed (in the pink arrow). 
+  - Using those scores, we combine the information from the various positions into a single output vector.
+- To give the Transformer more extensive attention capability, the attention mechanism is duplicated and executed multiple times in parallel
+
+## How attention is calculated
+
+- Before we start the calculation, let’s observe the following as the starting position:
+  - The attention layer (of a generative LLM) is processing attention for a single position.
+  - The inputs to the layer are:
+    - The vector representation of the current position or token 
+    - The vector representations of the previous tokens
+  - The goal is to produce a new representation of the current position that incorporates relevant information from the previous tokens:
+  - The training process produces three projection matrices that produce the components that interact in this calculation:
+    - A query projection matrix 
+    - A key projection matrix 
+    - A value projection matrix
+- Attention starts by multiplying the inputs by the projection matrices to create three new matrices. These are called the queries, keys, and values matrices. These matrices contain the information of the input tokens projected to three different spaces that help carry out the two steps of attention:
+  - Relevance scoring 
+  - Combining information
+
+## Self-attention: Relevance scoring
+
+- In a generative Transformer, we’re generating one token at a time. This means we’re processing one position at a time. So the attention mechanism here is only concerned with this one position, and how information from other positions can be pulled in to inform this position.
+- The relevance scoring step of attention is conducted by multiplying the query vector of the current position with the keys matrix. This produces a score stating how relevant each previous token is. Passing that by a softmax operation normalizes these scores so they sum up to 1
+
+## Self-attention: Combining information
+
+- Now that we have the relevance scores, we multiply the value vector associated with each token by that token’s score. Summing up those resulting vectors produces the output of this attention step
+
+## Recent Improvements to the Transformer Architecture
+
 - 
