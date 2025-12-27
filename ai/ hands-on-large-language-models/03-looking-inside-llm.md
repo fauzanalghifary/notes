@@ -85,4 +85,31 @@
 
 ## Recent Improvements to the Transformer Architecture
 
+- More Efficient Attention
+- Multi-query and grouped-query attention
+- The Transformer Block
+  - One of the differences we see in this version of the Transformer block is that normalization happens prior to attention and the feedforward layers. This has been reported to reduce the required training time
+- Positional Embeddings (RoPE)
+  - Positional embeddings have been a key component since the original Transformer. They enable the model to keep track of the order of tokens/words in a sequence/sentence, which is an indispensable source of information in language. 
+  - From the many positional encoding schemes proposed in the past years, rotary positional embeddings (or “RoPE,” introduced in “RoFormer: Enhanced Transformer with rotary position embedding”) is especially important to point out.
+
+## Summary
+
+- A Transformer LLM generates one token at a time.
+- That output token is appended to the prompt, then this updated prompt is presented to the model again for another forward pass to generate the next token.
+- The three major components of the Transformer LLM are 
+  - the tokenizer, 
+  - a stack of Transformer blocks, and 
+  - a language modeling head.
+- The tokenizer contains the token vocabulary for the model. The model has token embeddings associated with those tokens. Breaking the text into tokens and then using the embeddings of these tokens is the first step in the token generation process.
+- The forward pass flows through all the stages once, one by one.
+- Near the end of the process, the LM head scores the probabilities of the next possible token. Decoding strategies inform which actual token to pick as the output for this generation step (sometimes it’s the most probable next token, but not always).
+- One reason the Transformer excels is its ability to process tokens in parallel. Each of the input tokens flow into their individual tracks or streams of processing. The number of streams is the model’s “context size” and this represents the max number of tokens the model can operate on.
+- Because Transformer LLMs loop to generate the text one token at a time, it’s a good idea to cache the processing results of each step so we don’t duplicate the processing effort (these results are stored as various matrices within the layers).
+- The majority of processing happens within Transformer blocks. These are made up of two components
+  - feedforward neural network, which is able to store information and make predictions and interpolations from data it was trained on.
+  - attention layer. Attention incorporates contextual information to allow the model to better capture the nuance of language.
+- Attention happens in two major steps: (1) scoring relevance and (2) combining information.
+- A Transformer attention layer conducts several attention operations in parallel, each occurring inside an attention head, and their outputs are aggregated to make up the output of the attention layer.
+- Attention can be accelerated via sharing the keys and values matrices between all heads, or groups of heads (grouped-query attention).
 - 
