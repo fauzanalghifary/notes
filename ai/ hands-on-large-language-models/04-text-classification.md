@@ -27,3 +27,17 @@
   - The F1 score balances both precision and recall to create a model’s overall performance.
 
 ## Classification Tasks That Leverage Embeddings
+
+- There might be times when you want to fine-tune the model yourself if you have sufficient computing available (see Chapter11). 
+  - However, not everyone has access to extensive computing. 
+  - This is where general-purpose embedding models come in.
+- Instead of directly using the representation model for classification, we will use an embedding model for generating features. 
+  - Those features can then be fed into a classifier, thereby creating a two-step approach
+    - Feature extractor
+    - Classifier
+- In the first step, we convert our textual input to embeddings using the embedding model
+- The classifier is trainable and not limited to logistic regression and can take on any form as long as it performs classification.
+
+## What If We Do Not Have Labeled Data?
+
+- 
