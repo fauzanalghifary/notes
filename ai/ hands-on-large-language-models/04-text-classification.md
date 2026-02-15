@@ -40,4 +40,13 @@
 
 ## What If We Do Not Have Labeled Data?
 
-- 
+- Zero-shot classification attempts to predict the labels of input text even though it was not trained on them
+- To assign labels to documents, we can apply cosine similarity to the document label pairs
+- To perform cosine similarity on the embeddings, we only need to compare the document embeddings with the label embeddings and get the best matching pairs:
+
+## Text Classification with Generative Models
+
+- Iteratively improving your prompt to get your preferred output is called prompt engineering.
+- In this section, we will demonstrate how we can leverage different types of generative models to perform classification without our Rotten Tomatoes dataset.
+
+## Using the Text-to-Text Transfer Transformer
