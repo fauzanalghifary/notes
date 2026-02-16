@@ -50,3 +50,13 @@
 - In this section, we will demonstrate how we can leverage different types of generative models to perform classification without our Rotten Tomatoes dataset.
 
 ## Using the Text-to-Text Transfer Transformer
+
+- With this architecture, these models were first pretrained using masked language modeling. In the first step of training, illustrated in Figure4-20, instead of masking individual tokens, sets of tokens (or token spans) were masked during pretraining.
+- The second step of training, namely fine-tuning the base model, is where the real magic happens. Instead of fine-tuning the model for one specific task, each task is converted to a sequence-to-sequence task and trained simultaneously.
+
+## Summary
+
+- In this chapter, we explored text classification using both generative and representation language models. Our goal was to assign a label or class to input text for the classification of a review’s sentiment.
+- We explored two types of representation models, a task-specific model and an embedding model
+  - The task-specific model was pretrained on a large dataset specifically for sentiment analysis and showed us that pretrained models are a great technique for classifying documents
+  - The embedding model was used to generate multipurpose embeddings that we used as the input to train a classifier.
