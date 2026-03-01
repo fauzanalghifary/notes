@@ -14,3 +14,22 @@
 ## Embedding Documents
 
 - embeddings are numerical representations of text that attempt to capture its meaning.
+
+## Reducing the Dimensionality of Embeddings
+
+- Before we cluster the embeddings, we will first need to take their high dimensionality into account. As the number of dimensions increases, there is an exponential growth in the number of possible values within each dimension. Finding all subspaces within each dimension becomes increasingly complex.
+- As a result, high-dimensional data can be troublesome for many clustering techniques as it gets more difficult to identify meaningful clusters. Instead, we can make use of dimensionality reduction
+- Dimensionality reduction techniques aim to preserve the global structure of high-dimensional data by finding low-dimensional representations.
+- To help the cluster model create meaningful clusters, the second step in our clustering pipeline is therefore dimensionality reduction
+
+## Cluster the Reduced Embeddings
+
+- Instead, a density-based algorithm freely calculates the number of clusters and does not force all data points to be part of a cluster
+
+## Inspecting the Clusters
+
+- Now that we have generated our clusters, we can inspect each cluster manually and explore the assigned documents to get an understanding of its content.
+- We can take this one step further and attempt to visualize our results instead of going through all documents manually. To do so, we will need to reduce our document embeddings to two dimensions, as that allows us to plot the documents on an x/y plane
+- This is visually appealing but does not yet allow us to see what is happening inside the clusters. Instead, we can extend this visualization by going from text clustering to topic modeling.
+
+## From Text Clustering to Topic Modeling
