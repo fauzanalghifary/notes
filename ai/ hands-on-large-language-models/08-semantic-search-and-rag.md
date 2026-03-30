@@ -20,4 +20,15 @@
 - Figure8-6 shows how we chunk a document before proceeding to embed each chunk. Those embedding vectors are then stored in the vector database and are ready for retrieval.
 - Another caveat of dense retrieval is when a user wants to find an exact match for a specific phrase. That’s a case that’s perfect for keyword matching. That’s one reason why hybrid search, which includes both semantic search and keyword search, is advised instead of relying solely on dense retrieval.
 - Dense retrieval systems also find it challenging to work properly in domains other than the ones that they were trained on. So, for example, if you train a retrieval model on internet and Wikipedia data, and then deploy it on legal texts (without having enough legal data as part of the training set), the model will not work as well in that legal domain.
-- 
+- One limitation of Transformer language models is that they are limited in context sizes, meaning we cannot feed them very long texts that go above the number of words or tokens that the model supports. So how do we embed long texts?
+  - There are several possible ways, and two possible approaches shown in Figure8-7 include indexing one vector per document and indexing multiple vectors per document.
+  - The chunking approach is better because it has full coverage of the text and because the vectors tend to capture individual concepts inside the text. This leads to a more expressive search index
+  - The best way of chunking a long text will depend on the types of texts and queries your system anticipates.
+- The fine-tuning process aims to make the embeddings of these queries close to the embedding of the resulting sentence.
+
+## Reranking
+
+- A lot of organizations have already built search systems. For those organizations, an easier way to incorporate language models is as a final step inside their search pipeline. This step is tasked with changing the order of the search results based on relevance to the search query. This one step can vastly improve search results
+
+## Retrieval Evaluation Metrics
+
