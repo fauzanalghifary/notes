@@ -32,3 +32,27 @@
 
 ## Retrieval Evaluation Metrics
 
+- Evaluating search systems needs three major components: a text archive, a set of queries, and relevance judgments indicating which documents are relevant for each query
+- But how can we assign a number or score to how much better that result is? Mean average precision is a measure that is able to quantify this distinction.
+- In addition to mean average precision, another metric commonly used for search systems is normalized discounted cumulative gain (nDCG), which is more nuanced in that the relevance of documents is not binary (relevant versus not relevant) and one document can be labeled as more relevant than another in the test suite and scoring mechanism.
+
+## Retrieval-Augmented Generation (RAG)
+
+- The mass adoption of LLMs quickly led to people asking them questions and expecting factual answers. While the models can answer some questions correctly, they also confidently answer lots of questions incorrectly. The leading method the industry turned to remedy this behavior is RAG
+- RAG systems incorporate search capabilities in addition to generation capabilities. They can be seen as an improvement to generation systems because they reduce their hallucinations and improve their factuality. They also enable use cases of “chat with my data” that consumers and companies can use to ground an LLM on internal company data, or a specific data source of interest (e.g., chatting with a book).
+- Let’s now turn our search system into a RAG system. We do that by adding an LLM to the end of the search pipeline. We present the question and the top retrieved documents to the LLM, and ask it to answer the question given the context provided by the search results.
+
+## Advanced RAG Techniques
+
+- Query rewriting
+- Multi-query RAG
+- Multi-hop RAG
+- Query routing
+- Agentic RAG
+
+## RAG Evaluation
+
+- Fluency
+- Perceived utility
+- Citation recall
+- Citation precision
